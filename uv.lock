@@ -3856,8 +3856,8 @@ dependencies = [
 
 [[package]]
 name = "xrtm-eval"
-version = "0.1.0"
-source = { git = "https://github.com/xrtm-org/eval.git?branch=main#967cbcfdffabc932098657132ed8e2e922f7c818" }
+version = "0.1.2"
+source = { git = "https://github.com/xrtm-org/eval.git?branch=main#6fea55a2ff912cd2b9374f5db785329b38695079" }
 dependencies = [
     { name = "networkx" },
     { name = "numpy" },
