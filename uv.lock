@@ -3868,7 +3868,7 @@ dependencies = [
 [[package]]
 name = "xrtm-forecast"
 version = "0.5.3"
-source = { git = "https://github.com/xrtm-org/forecast.git?branch=refactor%2Fsplit-architecture#0cd530456f3e7854b01c2796c39403604827469c" }
+source = { git = "https://github.com/xrtm-org/forecast.git?branch=main#40e2e25f180a2ae429b47cc2859edd532182026b" }
 dependencies = [
     { name = "aiohttp" },
     { name = "anthropic" },
@@ -3894,7 +3894,7 @@ dependencies = [
 
 [[package]]
 name = "xrtm-train"
-version = "0.1.0"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "numpy" },
@@ -3926,7 +3926,7 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.3.0" },
     { name = "xrtm-data", git = "https://github.com/xrtm-org/data.git?branch=main" },
     { name = "xrtm-eval", git = "https://github.com/xrtm-org/eval.git?branch=main" },
-    { name = "xrtm-forecast", git = "https://github.com/xrtm-org/forecast.git?branch=refactor%2Fsplit-architecture" },
+    { name = "xrtm-forecast", git = "https://github.com/xrtm-org/forecast.git?branch=main" },
 ]
 provides-extras = ["dev"]
 

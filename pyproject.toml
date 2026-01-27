@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xrtm-train"
-version = "0.1.1"
+version = "0.1.2"
 description = "The Learning/Optimization layer for XRTM."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -17,7 +17,7 @@ dependencies = [
     "numpy>=1.24.0",
     "scikit-learn>=1.3.0",
     "xrtm-data",
-    "xrtm-eval",
+    "xrtm-eval>=0.1.1",
     "xrtm-forecast",
 ]
 
@@ -37,7 +37,7 @@ packages = {find = {where = ["src"], include = ["xrtm*"], namespaces = true}}
 [tool.uv.sources]
 xrtm-data = { git = "https://github.com/xrtm-org/data.git", branch = "main" }
 xrtm-eval = { git = "https://github.com/xrtm-org/eval.git", branch = "main" }
-xrtm-forecast = { git = "https://github.com/xrtm-org/forecast.git", branch = "refactor/split-architecture" }
+xrtm-forecast = { git = "https://github.com/xrtm-org/forecast.git", branch = "main" }
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
