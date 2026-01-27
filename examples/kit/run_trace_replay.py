@@ -20,6 +20,7 @@ from datetime import datetime
 
 from xrtm.data.schemas.forecast import ForecastOutput
 from xrtm.forecast.core.schemas.graph import BaseGraphState, TemporalContext
+
 from xrtm.train.simulation.replayer import TraceReplayer
 
 # Setup Logging

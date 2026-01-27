@@ -16,11 +16,12 @@
 import asyncio
 
 from xrtm.data.schemas.forecast import ForecastQuestion
-from xrtm.eval.schemas.forecast import ForecastResolution
 from xrtm.eval.kit.eval.metrics import BrierScoreEvaluator
+from xrtm.eval.schemas.forecast import ForecastResolution
 from xrtm.forecast.core.config.inference import OpenAIConfig
 from xrtm.forecast.kit.agents.specialists.analyst import ForecastingAnalyst
 from xrtm.forecast.providers.inference.factory import ModelFactory
+
 from xrtm.train import Backtester
 
 
