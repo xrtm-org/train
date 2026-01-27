@@ -6,7 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "xrtm-train"
 version = "0.1.0"
 description = "The Learning/Optimization layer for XRTM."
+readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "XRTM Team", email = "moy@xrtm.org"}
+]
 dependencies = [
     "pydantic>=2.0.0",
     "numpy>=1.24.0",
@@ -14,6 +19,15 @@ dependencies = [
     "xrtm-data",
     "xrtm-eval",
     "xrtm-forecast",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
 ]
 
 [tool.setuptools]
@@ -24,3 +38,23 @@ packages = {find = {where = ["src"], include = ["xrtm*"], namespaces = true}}
 xrtm-data = { git = "https://github.com/xrtm-org/data.git", branch = "main" }
 xrtm-eval = { git = "https://github.com/xrtm-org/eval.git", branch = "main" }
 xrtm-forecast = { git = "https://github.com/xrtm-org/forecast.git", branch = "refactor/split-architecture" }
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [".git", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = false
+explicit_package_bases = true
