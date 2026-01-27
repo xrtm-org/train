@@ -19,3 +19,8 @@ dependencies = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = {find = {where = ["src"], include = ["xrtm*"], namespaces = true}}
+
+[tool.uv.sources]
+xrtm-data = { git = "https://github.com/xrtm-org/data.git", branch = "main" }
+xrtm-eval = { git = "https://github.com/xrtm-org/eval.git", branch = "main" }
+xrtm-forecast = { git = "https://github.com/xrtm-org/forecast.git", branch = "refactor/split-architecture" }
