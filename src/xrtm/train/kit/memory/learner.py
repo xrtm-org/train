@@ -16,7 +16,8 @@ class EpisodicLearner:
         try:
             query = f"Past performance and lessons for {subject_id}"
             experiences = self.memory.retrieve_similar(query, n_results=n_results)
-            if not experiences: return "No relevant past experiences found."
+            if not experiences:
+                return "No relevant past experiences found."
             formatted_lessons = "\n--- PAST LESSONS LEARNED ---\n"
             for i, doc in enumerate(experiences, 1):
                 formatted_lessons += f"Experience {i}:\n{doc.strip()}\n"

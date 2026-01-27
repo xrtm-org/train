@@ -9,6 +9,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 from sklearn.linear_model import LogisticRegression
 
+
 class PlattScaler(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     a: float = 1.0
@@ -27,7 +28,8 @@ class PlattScaler(BaseModel):
         return self
 
     def transform(self, y_prob: Union[float, List[float]]) -> Union[float, List[float]]:
-        if not self.fitted: return y_prob
+        if not self.fitted:
+            return y_prob
         is_scalar = isinstance(y_prob, (float, int))
         y_prob_arr = np.array([y_prob]) if is_scalar else np.array(y_prob)
         eps = 1e-15
@@ -38,16 +40,22 @@ class PlattScaler(BaseModel):
         return float(p_calib[0]) if is_scalar else p_calib.tolist()
 
     def save(self, path: Union[str, Path]) -> None:
-        with open(path, "wb") as f: pickle.dump({"a": self.a, "b": self.b, "fitted": self.fitted}, f)
+        with open(path, "wb") as f:
+            pickle.dump({"a": self.a, "b": self.b, "fitted": self.fitted}, f)
 
     def load(self, path: Union[str, Path]) -> "PlattScaler":
-        with open(path, "rb") as f: data = pickle.load(f)
+        with open(path, "rb") as f:
+            data = pickle.load(f)
         self.a, self.b, self.fitted = data["a"], data["b"], data["fitted"]
         return self
 
+
 class BetaScaler(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    a: float = 1.0; b: float = 1.0; c: float = 0.0; fitted: bool = False
+    a: float = 1.0
+    b: float = 1.0
+    c: float = 0.0
+    fitted: bool = False
 
     def fit(self, y_true: List[int], y_prob: List[float]) -> "BetaScaler":
         eps = 1e-15
@@ -60,7 +68,8 @@ class BetaScaler(BaseModel):
         return self
 
     def transform(self, y_prob: Union[float, List[float]]) -> Union[float, List[float]]:
-        if not self.fitted: return y_prob
+        if not self.fitted:
+            return y_prob
         is_scalar = isinstance(y_prob, (float, int))
         y_prob_arr = np.array([y_prob]) if is_scalar else np.array(y_prob)
         eps = 1e-15
@@ -68,5 +77,6 @@ class BetaScaler(BaseModel):
         scaled_logits = self.a * np.log(p) - self.b * np.log(1 - p) + self.c
         p_calib = 1.0 / (1.0 + np.exp(-scaled_logits))
         return float(p_calib[0]) if is_scalar else p_calib.tolist()
+
 
 __all__ = ["PlattScaler", "BetaScaler"]

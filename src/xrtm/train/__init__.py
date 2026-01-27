@@ -16,7 +16,6 @@
 from xrtm.train.simulation.backtester import Backtester
 from xrtm.train.simulation.replayer import TraceReplayer
 
-
 __all__ = [
     "Backtester",
     "TraceReplayer",
