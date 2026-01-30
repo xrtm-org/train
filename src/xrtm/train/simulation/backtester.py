@@ -21,7 +21,7 @@ from typing import List, Tuple
 from xrtm.data.schemas.forecast import ForecastQuestion
 
 # From xrtm-eval
-from xrtm.eval.core.eval.definitions import EvaluationReport, EvaluationResult, Evaluator
+from xrtm.eval.core.eval.definitions import EvaluationReport, Evaluator
 from xrtm.eval.schemas.forecast import ForecastResolution
 
 # From xrtm-forecast (Internal)
