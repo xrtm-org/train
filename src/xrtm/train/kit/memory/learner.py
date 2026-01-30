@@ -18,10 +18,12 @@ class EpisodicLearner:
             experiences = self.memory.retrieve_similar(query, n_results=n_results)
             if not experiences:
                 return "No relevant past experiences found."
-            formatted_lessons = "\n--- PAST LESSONS LEARNED ---\n"
+            formatted_lessons = ["\n--- PAST LESSONS LEARNED ---\n"]
             for i, doc in enumerate(experiences, 1):
-                formatted_lessons += f"Experience {i}:\n{doc.strip()}\n"
-            return formatted_lessons
+                formatted_lessons.append(f"Experience {i}:\n")
+                formatted_lessons.append(doc.strip())
+                formatted_lessons.append("\n")
+            return "".join(formatted_lessons)
         except Exception as e:
             logger.error(f"[LEARNER] Failed to retrieve lessons: {e}")
             return "Error retrieving past lessons."
