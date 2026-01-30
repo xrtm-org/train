@@ -101,7 +101,7 @@ class BacktestRunner:
         tags: Optional[List[str]] = None,
     ) -> EvaluationResult:
         prediction_val = 0.5
-        for report in reversed(list(state.node_reports.values())):
+        for _, report in reversed(state.node_reports.items()):
             if isinstance(report, ForecastOutput):
                 prediction_val = report.confidence
                 break
