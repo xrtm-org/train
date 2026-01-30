@@ -1,5 +1,7 @@
-# AGENT CONFIGURATION: xrtm-train NODE
-# IDENTITY: THE LAB
+---
+agent_node: xrtm-train
+identity: THE LAB
+---
 
 ### 1. [PRIME DIRECTIVES] (Shared Core)
 - **Tech Stack**: Python (3.11+), Pydantic (v2), Polars (for high-perf data).
@@ -37,3 +39,4 @@
 - **ON FAILURE**:
   - If a backtest fails or produces erratic results, immediately try to reproduce strictly using `TraceReplayer`.
   - Check for "future leakage" (data accessed after `snapshot_time`) as the first suspect.
+---
