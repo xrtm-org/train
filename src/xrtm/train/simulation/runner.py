@@ -35,6 +35,9 @@ from xrtm.forecast.core.schemas.graph import BaseGraphState, TemporalContext
 
 logger = logging.getLogger(__name__)
 
+TRUE_VALUES = {"true", "yes", "1", "pass"}
+FALSE_VALUES = {"false", "no", "0", "fail"}
+
 
 class BacktestInstance(BaseModel):
     """Represents a single instance in a backtest dataset."""
@@ -114,9 +117,10 @@ class BacktestRunner:
 
         outcome_raw = resolution.outcome
         if isinstance(outcome_raw, str):
-            if outcome_raw.lower() in ["true", "yes", "1", "pass"]:
+            lowered = outcome_raw.lower()
+            if lowered in TRUE_VALUES:
                 gt_val = 1.0
-            elif outcome_raw.lower() in ["false", "no", "0", "fail"]:
+            elif lowered in FALSE_VALUES:
                 gt_val = 0.0
             else:
                 try:
