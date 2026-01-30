@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from typing import List, Tuple
 
@@ -20,7 +21,7 @@ from typing import List, Tuple
 from xrtm.data.schemas.forecast import ForecastQuestion
 
 # From xrtm-eval
-from xrtm.eval.core.eval.definitions import EvaluationReport, EvaluationResult, Evaluator
+from xrtm.eval.core.eval.definitions import EvaluationReport, Evaluator
 from xrtm.eval.schemas.forecast import ForecastResolution
 
 # From xrtm-forecast (Internal)
@@ -37,23 +38,27 @@ class Backtester:
         self.evaluator = evaluator
 
     async def run(self, dataset: List[Tuple[ForecastQuestion, ForecastResolution]]) -> EvaluationReport:
-        results: List[EvaluationResult] = []
-        total_score = 0.0
-
-        for question, resolution in dataset:
+        async def process_question(question, resolution):
             try:
                 logger.info(f"Backtesting question: {question.id}")
                 prediction = await self.agent.run(question)
                 conf = getattr(prediction, "confidence", prediction)
-                eval_res = self.evaluator.evaluate(
+                return self.evaluator.evaluate(
                     prediction=conf, ground_truth=resolution.outcome, subject_id=question.id
                 )
-                results.append(eval_res)
-                total_score += eval_res.score
             except Exception as e:
                 logger.error(f"Failed to evaluate question {question.id}: {e}")
+                return None
+
+        # Execute all questions concurrently
+        tasks = [process_question(q, r) for q, r in dataset]
+        processed_results = await asyncio.gather(*tasks)
+
+        # Filter out failed evaluations
+        results = [res for res in processed_results if res is not None]
 
         count = len(results)
+        total_score = sum(res.score for res in results)
         mean_score = total_score / count if count > 0 else 0.0
 
         return EvaluationReport(
