@@ -40,12 +40,7 @@ async def test_backtester_flow():
     prediction.confidence = 0.8
     mock_agent.run.return_value = prediction
 
-    eval_result = EvaluationResult(
-        subject_id="q1",
-        score=0.04,
-        ground_truth=1,
-        prediction=0.8
-    )
+    eval_result = EvaluationResult(subject_id="q1", score=0.04, ground_truth=1, prediction=0.8)
     mock_evaluator.evaluate.return_value = eval_result
 
     # Run Backtester

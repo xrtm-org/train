@@ -8,6 +8,7 @@ from xrtm.forecast.kit.memory.unified import Memory as UnifiedMemory
 
 logger = logging.getLogger(__name__)
 
+
 class EpisodicLearner:
     def __init__(self, memory: UnifiedMemory):
         self.memory = memory
@@ -27,5 +28,6 @@ class EpisodicLearner:
         except Exception as e:
             logger.error(f"[LEARNER] Failed to retrieve lessons: {e}")
             return "Error retrieving past lessons."
+
 
 __all__ = ["EpisodicLearner"]

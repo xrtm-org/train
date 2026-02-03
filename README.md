@@ -50,6 +50,19 @@ With the v0.6.0 architecture split, calibration and replay examples now live her
 *   **[Trace Replay](examples/kit/run_trace_replay.py)**: Re-running a saved execution for debugging.
 *   **[Evaluation Harness](examples/kit/run_evaluation_harness.py)**: End-to-end backtest with metrics.
 
+## Project Structure
+
+```
+src/xrtm/train/
+├── core/            # Interfaces & Schemas
+│   └── eval/            # Calibration (PlattScaler, BetaScaler)
+├── kit/             # Training utilities
+│   ├── memory/          # Replay buffers
+│   └── optimization/    # Training strategies
+├── simulation/      # Backtester, TraceReplayer
+└── providers/       # Remote training backends (future)
+```
+
 ## Development
 
 Prerequisites:

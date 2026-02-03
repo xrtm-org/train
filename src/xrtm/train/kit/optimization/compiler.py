@@ -9,6 +9,7 @@ from xrtm.forecast.kit.agents.prompting import CompiledAgent, PromptTemplate
 
 logger = logging.getLogger(__name__)
 
+
 class BrierOptimizer:
     def __init__(self, optimizer_model: Any):
         self.optimizer_model = optimizer_model
@@ -28,5 +29,6 @@ class BrierOptimizer:
         return PromptTemplate(
             instruction=new_instruction.strip(), examples=agent.template.examples, version=agent.template.version + 1
         )
+
 
 __all__ = ["BrierOptimizer"]
