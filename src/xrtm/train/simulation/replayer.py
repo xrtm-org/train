@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -44,6 +45,12 @@ class TraceReplayer:
         except Exception as e:
             logger.error(f"Failed to save trace to {path}: {e}")
             raise
+
+    @staticmethod
+    async def save_trace_async(state: BaseGraphState, path: str) -> None:
+        """Asynchronously save a trace to a file using an executor to avoid blocking the event loop."""
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, TraceReplayer.save_trace, state, path)
 
     @staticmethod
     def load_trace(path: str) -> BaseGraphState:
