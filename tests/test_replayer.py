@@ -1,9 +1,12 @@
-import pytest
-import os
 import json
+import os
 import tempfile
+
+import pytest
 from xrtm.forecast.core.schemas.graph import BaseGraphState
+
 from xrtm.train.simulation.replayer import TraceReplayer
+
 
 @pytest.mark.asyncio
 async def test_save_trace_async():
