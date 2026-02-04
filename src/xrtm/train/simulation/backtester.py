@@ -43,9 +43,7 @@ class Backtester:
                 logger.info(f"Backtesting question: {question.id}")
                 prediction = await self.agent.run(question)
                 conf = getattr(prediction, "confidence", prediction)
-                return self.evaluator.evaluate(
-                    prediction=conf, ground_truth=resolution.outcome, subject_id=question.id
-                )
+                return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
             except Exception as e:
                 logger.error(f"Failed to evaluate question {question.id}: {e}")
                 return None
