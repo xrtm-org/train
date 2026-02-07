@@ -16,15 +16,16 @@ class BrierOptimizer:
 
     async def optimize(self, agent: CompiledAgent, dataset: List[Tuple[Any, float, int]]) -> PromptTemplate:
         total_error = sum((p - g) ** 2 for _, p, g in dataset) / len(dataset)
-        meta_prompt = f"""
+        parts = [f"""
         You are a Prompt Optimizer for a forecasting engine.
         Current Goal: Minimize Brier Score (Current: {total_error:.4f}).
         Current Instruction: "{agent.template.instruction}"
         Performance Snippets (Input -> Pred vs Truth):
-        """
+        """]
         for inp, pred, truth in dataset[:5]:
-            meta_prompt += f"- {str(inp)[:50]}... -> {pred} (Actual: {truth})\n"
-        meta_prompt += "\nSuggest a NEW system instruction that corrects for these errors.\nReturn ONLY the new instruction string."
+            parts.append(f"- {str(inp)[:50]}... -> {pred} (Actual: {truth})\n")
+        parts.append("\nSuggest a NEW system instruction that corrects for these errors.\nReturn ONLY the new instruction string.")
+        meta_prompt = "".join(parts)
         new_instruction = await self.optimizer_model.generate(meta_prompt)
         return PromptTemplate(
             instruction=new_instruction.strip(), examples=agent.template.examples, version=agent.template.version + 1
