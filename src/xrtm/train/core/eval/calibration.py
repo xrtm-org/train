@@ -31,7 +31,7 @@ class PlattScaler(BaseModel):
         if not self.fitted:
             return y_prob
         is_scalar = isinstance(y_prob, (float, int))
-        y_prob_arr = np.array([y_prob]) if is_scalar else np.array(y_prob)
+        y_prob_arr = np.array([y_prob]) if is_scalar else np.asarray(y_prob)
         eps = 1e-15
         p = np.clip(y_prob_arr, eps, 1 - eps)
         logits = np.log(p / (1 - p))
@@ -71,7 +71,7 @@ class BetaScaler(BaseModel):
         if not self.fitted:
             return y_prob
         is_scalar = isinstance(y_prob, (float, int))
-        y_prob_arr = np.array([y_prob]) if is_scalar else np.array(y_prob)
+        y_prob_arr = np.array([y_prob]) if is_scalar else np.asarray(y_prob)
         eps = 1e-15
         p = np.clip(y_prob_arr, eps, 1 - eps)
         scaled_logits = self.a * np.log(p) - self.b * np.log(1 - p) + self.c
