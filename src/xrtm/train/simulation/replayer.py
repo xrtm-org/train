@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -35,11 +36,16 @@ class TraceReplayer:
     """Utility class for saving, loading, and replaying evaluation traces."""
 
     @staticmethod
-    def save_trace(state: BaseGraphState, path: str) -> None:
+    async def save_trace(state: BaseGraphState, path: str) -> None:
         try:
-            json_str = state.model_dump_json(indent=2)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(json_str)
+            loop = asyncio.get_running_loop()
+
+            def _save():
+                json_str = state.model_dump_json(indent=2)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(json_str)
+
+            await loop.run_in_executor(None, _save)
             logger.info(f"Trace saved to {path}")
         except Exception as e:
             logger.error(f"Failed to save trace to {path}: {e}")
