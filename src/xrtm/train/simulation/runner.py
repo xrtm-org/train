@@ -86,7 +86,7 @@ class BacktestRunner:
                     state, instance.resolution, instance.question.id, instance.reference_time, instance.tags
                 )
             except Exception as e:
-                logger.error(f"Backtest error on {instance.question.id}: {e}")
+                logger.error("Backtest error on %s: %s", instance.question.id, e)
                 return EvaluationResult(
                     subject_id=instance.question.id,
                     score=1.0,
