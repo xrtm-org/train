@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import os
 import tempfile
@@ -28,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 logger = logging.getLogger("TraceDemo")
 
 
-def main():
+async def main():
     print("--- 📼 Deterministic Trace Replay Demo ---")
 
     # 1. Simulate a Live Run
@@ -65,7 +66,7 @@ def main():
 
     # We assume 'YES' happened.
     # Expected Brier: (0.8 - 1.0)^2 = 0.04
-    result_a = replayer.replay_evaluation(trace_path=trace_path, resolution="YES")
+    result_a = await replayer.replay_evaluation(trace_path=trace_path, resolution="YES")
 
     print(f"Prediction: {0.8}")
     print("Outcome:    YES (1.0)")
@@ -76,7 +77,7 @@ def main():
 
     # We verify what the score WOULD have been if the outcome was NO.
     # Expected Brier: (0.8 - 0.0)^2 = 0.64
-    result_b = replayer.replay_evaluation(trace_path=trace_path, resolution="NO")
+    result_b = await replayer.replay_evaluation(trace_path=trace_path, resolution="NO")
 
     print(f"Prediction: {0.8}")
     print("Outcome:    NO (0.0)")
@@ -88,4 +89,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
