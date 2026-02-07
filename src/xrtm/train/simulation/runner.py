@@ -68,6 +68,7 @@ class BacktestRunner:
         self.orchestrator = orchestrator
         self.evaluator = evaluator or BrierScoreEvaluator()
         self.entry_node = entry_node
+        self.concurrency = concurrency
         self.semaphore = asyncio.Semaphore(concurrency)
 
     async def _run_single(self, instance: BacktestInstance) -> EvaluationResult:
@@ -139,8 +140,30 @@ class BacktestRunner:
         return eval_res
 
     async def run(self, dataset: BacktestDataset) -> EvaluationReport:
-        tasks = [self._run_single(item) for item in dataset.items]
-        results = await asyncio.gather(*tasks)
+        results = [None] * len(dataset.items)
+        pending = set()
+
+        async def run_wrapper(idx, item):
+            res = await self._run_single(item)
+            results[idx] = res
+            return idx
+
+        for i, item in enumerate(dataset.items):
+            if len(pending) >= self.concurrency:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for t in done:
+                    if t.exception():
+                        raise t.exception()
+
+            task = asyncio.create_task(run_wrapper(i, item))
+            pending.add(task)
+
+        if pending:
+            done, _ = await asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED)
+            for t in done:
+                if t.exception():
+                    raise t.exception()
+
         total_score = sum(r.score for r in results)
         count = len(results)
         mean_score = total_score / count if count > 0 else 0.0
