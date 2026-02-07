@@ -4,6 +4,8 @@
 import logging
 from typing import Any, List, Tuple
 
+import numpy as np
+
 # From xrtm-forecast
 from xrtm.forecast.kit.agents.prompting import CompiledAgent, PromptTemplate
 
@@ -15,7 +17,14 @@ class BrierOptimizer:
         self.optimizer_model = optimizer_model
 
     async def optimize(self, agent: CompiledAgent, dataset: List[Tuple[Any, float, int]]) -> PromptTemplate:
-        total_error = sum((p - g) ** 2 for _, p, g in dataset) / len(dataset)
+        if not dataset:
+            raise ZeroDivisionError("Dataset is empty")
+
+        n = len(dataset)
+        predictions = np.fromiter((p for _, p, _ in dataset), dtype=float, count=n)
+        ground_truths = np.fromiter((g for _, _, g in dataset), dtype=float, count=n)
+        total_error = np.mean((predictions - ground_truths) ** 2)
+
         meta_prompt = f"""
         You are a Prompt Optimizer for a forecasting engine.
         Current Goal: Minimize Brier Score (Current: {total_error:.4f}).
