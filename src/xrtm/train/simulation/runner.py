@@ -68,6 +68,7 @@ class BacktestRunner:
         self.orchestrator = orchestrator
         self.evaluator = evaluator or BrierScoreEvaluator()
         self.entry_node = entry_node
+        self.concurrency = concurrency
         self.semaphore = asyncio.Semaphore(concurrency)
 
     async def _run_single(self, instance: BacktestInstance) -> EvaluationResult:
@@ -139,10 +140,43 @@ class BacktestRunner:
         return eval_res
 
     async def run(self, dataset: BacktestDataset) -> EvaluationReport:
-        tasks = [self._run_single(item) for item in dataset.items]
-        results = await asyncio.gather(*tasks)
-        total_score = sum(r.score for r in results)
-        count = len(results)
+        # Results are initially None but will be populated by run_wrapper
+        results: List[Optional[EvaluationResult]] = [None] * len(dataset.items)
+        pending: set[asyncio.Task] = set()
+
+        async def run_wrapper(idx, item):
+            res = await self._run_single(item)
+            results[idx] = res
+            return idx
+
+        for i, item in enumerate(dataset.items):
+            if len(pending) >= self.concurrency:
+                done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+                for t in done:
+                    exc = t.exception()
+                    if exc:
+                        raise exc
+
+            task = asyncio.create_task(run_wrapper(i, item))
+            pending.add(task)
+
+        if pending:
+            done, _ = await asyncio.wait(pending, return_when=asyncio.ALL_COMPLETED)
+            for t in done:
+                exc = t.exception()
+                if exc:
+                    raise exc
+
+        # Check for any unpopulated results (should not happen if all tasks complete)
+        final_results: List[EvaluationResult] = [r for r in results if r is not None]
+        if len(final_results) != len(dataset.items):
+            logger.warning(
+                f"Missing results: expected {len(dataset.items)}, got {len(final_results)}. "
+                "Some tasks may have failed silently or been cancelled."
+            )
+
+        total_score = sum(r.score for r in final_results)
+        count = len(final_results)
         mean_score = total_score / count if count > 0 else 0.0
         ece_evaluator = ExpectedCalibrationErrorEvaluator()
         ece_score, ece_bins = ece_evaluator.compute_calibration_data(results)
