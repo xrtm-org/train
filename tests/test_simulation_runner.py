@@ -1,8 +1,11 @@
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from xrtm.train.simulation.runner import BacktestRunner
+
 
 @pytest.mark.asyncio
 async def test_run_single_logging_deferred():
