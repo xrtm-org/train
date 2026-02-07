@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -46,7 +47,7 @@ class TraceReplayer:
             raise
 
     @staticmethod
-    def load_trace(path: str) -> BaseGraphState:
+    def _load_trace_sync(path: str) -> BaseGraphState:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 json_str = f.read()
@@ -56,14 +57,19 @@ class TraceReplayer:
             logger.error(f"Failed to load trace from {path}: {e}")
             raise
 
-    def replay_evaluation(
+    @staticmethod
+    async def load_trace(path: str) -> BaseGraphState:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, TraceReplayer._load_trace_sync, path)
+
+    async def replay_evaluation(
         self,
         trace_path: str,
         resolution: ForecastResolution | float | str,
         evaluator: Optional[Evaluator] = None,
         subject_id_override: Optional[str] = None,
     ) -> EvaluationResult:
-        state = self.load_trace(trace_path)
+        state = await self.load_trace(trace_path)
         subject_id = subject_id_override or state.subject_id
         if not isinstance(resolution, ForecastResolution):
             resolution = ForecastResolution(
