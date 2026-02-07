@@ -33,20 +33,22 @@ logger = logging.getLogger(__name__)
 class Backtester:
     """Orchestrates the backtesting process for a specific agent and evaluator."""
 
-    def __init__(self, agent: Agent, evaluator: Evaluator):
+    def __init__(self, agent: Agent, evaluator: Evaluator, concurrency: int = 5):
         self.agent = agent
         self.evaluator = evaluator
+        self.semaphore = asyncio.Semaphore(concurrency)
 
     async def run(self, dataset: List[Tuple[ForecastQuestion, ForecastResolution]]) -> EvaluationReport:
         async def process_question(question, resolution):
-            try:
-                logger.info(f"Backtesting question: {question.id}")
-                prediction = await self.agent.run(question)
-                conf = getattr(prediction, "confidence", prediction)
-                return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
-            except Exception as e:
-                logger.error(f"Failed to evaluate question {question.id}: {e}")
-                return None
+            async with self.semaphore:
+                try:
+                    logger.info(f"Backtesting question: {question.id}")
+                    prediction = await self.agent.run(question)
+                    conf = getattr(prediction, "confidence", prediction)
+                    return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
+                except Exception as e:
+                    logger.error(f"Failed to evaluate question {question.id}: {e}")
+                    return None
 
         # Execute all questions concurrently
         tasks = [process_question(q, r) for q, r in dataset]
