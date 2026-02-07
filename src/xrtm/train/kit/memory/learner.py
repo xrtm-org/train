@@ -1,6 +1,8 @@
 # coding=utf-8
 # Copyright 2026 XRTM Team. All rights reserved.
 
+import asyncio
+import functools
 import logging
 
 # From xrtm-forecast
@@ -13,10 +15,13 @@ class EpisodicLearner:
     def __init__(self, memory: UnifiedMemory):
         self.memory = memory
 
-    def get_lessons_for_subject(self, subject_id: str, n_results: int = 3) -> str:
+    async def get_lessons_for_subject(self, subject_id: str, n_results: int = 3) -> str:
         try:
             query = f"Past performance and lessons for {subject_id}"
-            experiences = self.memory.retrieve_similar(query, n_results=n_results)
+            loop = asyncio.get_running_loop()
+            experiences = await loop.run_in_executor(
+                None, functools.partial(self.memory.retrieve_similar, query, n_results=n_results)
+            )
             if not experiences:
                 return "No relevant past experiences found."
             formatted_lessons = ["\n--- PAST LESSONS LEARNED ---\n"]
