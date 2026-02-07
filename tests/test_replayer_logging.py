@@ -1,6 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import MagicMock, patch
+
 from xrtm.train.simulation.replayer import TraceReplayer
+
 
 class TestTraceReplayerLogging(unittest.TestCase):
     @patch("xrtm.train.simulation.replayer.logger")
