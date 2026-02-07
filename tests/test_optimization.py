@@ -1,10 +1,11 @@
 
-import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+from xrtm.forecast.kit.agents.prompting import CompiledAgent, PromptTemplate
 
 from xrtm.train.kit.optimization.compiler import BrierOptimizer
-from xrtm.forecast.kit.agents.prompting import CompiledAgent, PromptTemplate
+
 
 @pytest.fixture
 def mock_agent():
