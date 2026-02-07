@@ -26,7 +26,7 @@ class EpisodicLearner:
                 formatted_lessons.append("\n")
             return "".join(formatted_lessons)
         except Exception as e:
-            logger.error(f"[LEARNER] Failed to retrieve lessons: {e}")
+            logger.error("[LEARNER] Failed to retrieve lessons: %s", e)
             return "Error retrieving past lessons."
 
 
