@@ -71,3 +71,8 @@ ignore_missing_imports = true
 strict = false
 explicit_package_bases = true
 exclude = ["build/", "dist/", "examples/"]
+
+[dependency-groups]
+dev = [
+    "types-pyyaml>=6.0.12.20250915",
+]

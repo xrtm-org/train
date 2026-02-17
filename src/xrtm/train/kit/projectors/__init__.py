@@ -87,7 +87,7 @@ class SinusoidalEmbedding(nn.Module):
         """
         if x.dim() == 2:
             x = x.squeeze(-1)
-        angles = x.unsqueeze(-1) * self.freqs
+        angles = x.unsqueeze(-1) * self.freqs  # type: ignore[operator]
         return torch.cat([angles.sin(), angles.cos()], dim=-1)
 
 
