@@ -1,5 +1,25 @@
 # coding=utf-8
 # Copyright 2026 XRTM Team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+r"""
+Post-hoc probability calibration via Platt and Beta scaling.
+
+Fits logistic regressions on prediction logits to correct systematic
+miscalibration.  Both scalers are serializable and integrate with the
+xRTM evaluation pipeline.
+"""
 
 import pickle
 from pathlib import Path
@@ -11,6 +31,7 @@ from sklearn.linear_model import LogisticRegression
 
 
 class PlattScaler(BaseModel):
+    r"""Platt scaling: single-parameter logistic recalibration."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     a: float = 1.0
     b: float = 0.0
@@ -51,6 +72,7 @@ class PlattScaler(BaseModel):
 
 
 class BetaScaler(BaseModel):
+    r"""Beta calibration: two-parameter logistic recalibration for asymmetric errors."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     a: float = 1.0
     b: float = 1.0

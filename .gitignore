@@ -32,5 +32,8 @@ venv.bak/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage.xml
 htmlcov/
 site/
+logs/
+output/
