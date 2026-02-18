@@ -18,7 +18,7 @@ from typing import Optional
 
 # From xrtm-eval
 from xrtm.eval.core.eval.definitions import EvaluationResult, Evaluator
-from xrtm.eval.schemas.forecast import ForecastResolution
+from xrtm.eval.core.schemas import ForecastResolution
 
 # From xrtm-data
 # From xrtm-forecast (Internal)
