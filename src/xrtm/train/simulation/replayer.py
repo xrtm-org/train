@@ -40,9 +40,9 @@ class TraceReplayer:
             json_str = state.model_dump_json(indent=2)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(json_str)
-            logger.info(f"Trace saved to {path}")
+            logger.info("Trace saved to %s", path)
         except Exception as e:
-            logger.error(f"Failed to save trace to {path}: {e}")
+            logger.error("Failed to save trace to %s: %s", path, e)
             raise
 
     @staticmethod
@@ -53,7 +53,7 @@ class TraceReplayer:
             state = BaseGraphState.model_validate_json(json_str)
             return state
         except Exception as e:
-            logger.error(f"Failed to load trace from {path}: {e}")
+            logger.error("Failed to load trace from %s: %s", path, e)
             raise
 
     def replay_evaluation(
