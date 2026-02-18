@@ -21,13 +21,13 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 # From xrtm-data
-from xrtm.data.core.schemas.forecast import ForecastOutput, ForecastQuestion
+from xrtm.data import ForecastOutput, ForecastQuestion
 
 # From xrtm-eval
 from xrtm.eval.core.eval.definitions import EvaluationReport, EvaluationResult, Evaluator
-from xrtm.eval.core.schemas import ForecastResolution
 from xrtm.eval.kit.eval.analytics import SliceAnalytics
 from xrtm.eval.kit.eval.metrics import BrierScoreEvaluator, ExpectedCalibrationErrorEvaluator
+from xrtm.eval.core.schemas.forecast import ForecastResolution
 
 # From xrtm-forecast (Internal)
 from xrtm.forecast.core.orchestrator import Orchestrator

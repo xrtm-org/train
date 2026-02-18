@@ -3,9 +3,9 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from xrtm.data.schemas.forecast import ForecastOutput, ForecastQuestion
+from xrtm.data import ForecastOutput, ForecastQuestion
 from xrtm.eval.core.eval.definitions import EvaluationReport, EvaluationResult
-from xrtm.eval.schemas.forecast import ForecastResolution
+from xrtm.eval.core.schemas.forecast import ForecastResolution
 
 from xrtm.train.simulation.runner import BacktestDataset, BacktestInstance, BacktestRunner
 
