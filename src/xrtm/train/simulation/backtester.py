@@ -46,9 +46,10 @@ class Backtester:
         evaluator: Scoring backend implementing the ``Evaluator`` protocol.
     """
 
-    def __init__(self, agent: Agent, evaluator: Evaluator):
+    def __init__(self, agent: Agent, evaluator: Evaluator, concurrency: int = 5):
         self.agent = agent
         self.evaluator = evaluator
+        self.semaphore = asyncio.Semaphore(concurrency)
 
     async def run(self, dataset: List[Tuple[ForecastQuestion, ForecastResolution]]) -> EvaluationReport:
         r"""Run the full backtest and return an evaluation report.
@@ -60,14 +61,15 @@ class Backtester:
             An ``EvaluationReport`` containing per-question results and aggregate score.
         """
         async def process_question(question, resolution):
-            try:
-                logger.info(f"Backtesting question: {question.id}")
-                prediction = await self.agent.run(question)
-                conf = getattr(prediction, "confidence", prediction)
-                return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
-            except Exception as e:
-                logger.error(f"Failed to evaluate question {question.id}: {e}")
-                return None
+            async with self.semaphore:
+                try:
+                    logger.info(f"Backtesting question: {question.id}")
+                    prediction = await self.agent.run(question)
+                    conf = getattr(prediction, "confidence", prediction)
+                    return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
+                except Exception as e:
+                    logger.error(f"Failed to evaluate question {question.id}: {e}")
+                    return None
 
         # Execute all questions concurrently
         tasks = [process_question(q, r) for q, r in dataset]
