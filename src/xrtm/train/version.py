@@ -13,6 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .eval.calibration import BetaScaler, PlattScaler
+r"""
+Version information for xrtm-train.
 
-__all__ = ["PlattScaler", "BetaScaler"]
+This module provides the single source of truth for the package version.
+"""
+
+__all__ = ["__version__", "__author__", "__contact__", "__license__", "__copyright__"]
+
+__version__ = "0.2.1"
+__author__ = "XRTM Team"
+__contact__ = "moy@xrtm.org"
+__license__ = "Apache-2.0"
+__copyright__ = "Copyright 2026 XRTM Team"

@@ -13,6 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .eval.calibration import BetaScaler, PlattScaler
+r"""
+External providers for xrtm-train.
 
-__all__ = ["PlattScaler", "BetaScaler"]
+This module provides adapters for external training services.
+Currently empty - will be populated with remote training APIs,
+distributed training backends, etc.
+"""
+
+__all__: list[str] = []
