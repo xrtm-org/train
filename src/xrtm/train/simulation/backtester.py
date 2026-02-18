@@ -13,16 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""
+Backtesting orchestrator for temporal evaluation.
+
+Runs an ``Agent`` against a dataset of (question, resolution) pairs,
+computes scoring via an ``Evaluator``, and produces an ``EvaluationReport``.
+Ensures temporal isolation to prevent look-ahead bias.
+"""
+
 import asyncio
 import logging
 from typing import List, Tuple
 
 # From xrtm-data
-from xrtm.data.schemas.forecast import ForecastQuestion
+from xrtm.data.core.schemas import ForecastQuestion
 
 # From xrtm-eval
 from xrtm.eval.core.eval.definitions import EvaluationReport, Evaluator
-from xrtm.eval.schemas.forecast import ForecastResolution
+from xrtm.eval.core.schemas import ForecastResolution
 
 # From xrtm-forecast (Internal)
 from xrtm.forecast.kit.agents.base import Agent
@@ -31,13 +39,26 @@ logger = logging.getLogger(__name__)
 
 
 class Backtester:
-    """Orchestrates the backtesting process for a specific agent and evaluator."""
+    r"""Orchestrates backtesting for a given agent and evaluator.
+
+    Args:
+        agent: The forecasting agent to evaluate.
+        evaluator: Scoring backend implementing the ``Evaluator`` protocol.
+    """
 
     def __init__(self, agent: Agent, evaluator: Evaluator):
         self.agent = agent
         self.evaluator = evaluator
 
     async def run(self, dataset: List[Tuple[ForecastQuestion, ForecastResolution]]) -> EvaluationReport:
+        r"""Run the full backtest and return an evaluation report.
+
+        Args:
+            dataset: List of (question, resolution) pairs.
+
+        Returns:
+            An ``EvaluationReport`` containing per-question results and aggregate score.
+        """
         async def process_question(question, resolution):
             try:
                 logger.info(f"Backtesting question: {question.id}")
