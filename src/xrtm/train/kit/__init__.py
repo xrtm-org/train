@@ -17,8 +17,54 @@ r"""
 Researcher Kit for xrtm-train.
 
 This module provides high-level, composable utilities for training.
-Includes memory management, optimization strategies, and utilities
-built on top of the core interfaces.
+Includes memory management, optimization strategies, sample building,
+trainers, and neural projection utilities.
+
+Note: Projectors require PyTorch. They are lazily imported.
 """
 
-__all__: list[str] = []
+from xrtm.train.kit.builders import (
+    BetaPriorSnapshot,
+    NewsEvent,
+    TrainingSample,
+    TrainingSampleBuilder,
+)
+from xrtm.train.kit.trainers import (
+    BaseTrainer,
+    ReasoningTrace,
+    SingleNodeTrainer,
+    TrainResult,
+)
+
+__all__ = [
+    # Builders (always available)
+    "NewsEvent",
+    "BetaPriorSnapshot",
+    "TrainingSample",
+    "TrainingSampleBuilder",
+    # Trainers (always available)
+    "BaseTrainer",
+    "SingleNodeTrainer",
+    "TrainResult",
+    "ReasoningTrace",
+    # Projectors (require torch)
+    "SinusoidalEmbedding",
+    "BetaPriorProjector",
+    "DualHeadProjector",
+]
+
+
+def __getattr__(name: str):
+    r"""Lazy import for torch-dependent projectors."""
+    if name in ("SinusoidalEmbedding", "BetaPriorProjector", "DualHeadProjector"):
+        from xrtm.train.kit.projectors import (
+            BetaPriorProjector,
+            DualHeadProjector,
+            SinusoidalEmbedding,
+        )
+        return {
+            "SinusoidalEmbedding": SinusoidalEmbedding,
+            "BetaPriorProjector": BetaPriorProjector,
+            "DualHeadProjector": DualHeadProjector,
+        }[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
