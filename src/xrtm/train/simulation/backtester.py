@@ -61,12 +61,12 @@ class Backtester:
         """
         async def process_question(question, resolution):
             try:
-                logger.info(f"Backtesting question: {question.id}")
+                logger.info("Backtesting question: %s", question.id)
                 prediction = await self.agent.run(question)
                 conf = getattr(prediction, "confidence", prediction)
                 return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
             except Exception as e:
-                logger.error(f"Failed to evaluate question {question.id}: {e}")
+                logger.error("Failed to evaluate question %s: %s", question.id, e)
                 return None
 
         # Execute all questions concurrently
