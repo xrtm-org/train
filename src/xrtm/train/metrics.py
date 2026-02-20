@@ -48,47 +48,43 @@ class Evaluator:
                         For this minimal implementation, we will compute metrics on the *training samples themselves* (Prior vs Target)
                         as a baseline, AND if 'predictions' are passed (parsed), we evaluate them.
         """
-        kl_divs = []
-        maes = []
-        squared_errors = []
+        # Extract targets
+        t_a = np.array([s["target_alpha"] for s in samples])
+        t_b = np.array([s["target_beta"] for s in samples])
+        t_mean = t_a / (t_a + t_b)
 
-        for sample in samples:
-            # Targets
-            t_a = sample["target_alpha"]
-            t_b = sample["target_beta"]
-            t_mean = t_a / (t_a + t_b)
+        # Extract priors (predictions)
+        # Use 'prior' from sample as the baseline prediction if no model pred provided
+        # Fallback to NaN if 'prediction' key missing to handle missing priors
+        p_a = np.array([s.get("prior_alpha", np.nan) for s in samples])
+        p_b = np.array([s.get("prior_beta", np.nan) for s in samples])
 
-            # Predictions (Use 'prior' from sample as the baseline prediction if no model pred provided)
-            # In E2E evaluate_model, we run the model. We should parse alpha/beta.
-            # But parsing is complex if model outputs free text.
-            # For "Standard Schema", let's assume we have p_a, p_b.
+        if predictions and "alpha" in predictions[0]:
+             # Handle list of prediction dicts
+             # TODO: Implement extracting p_a/p_b from predictions list if needed
+             pass
 
-            # Fallback to prior if 'prediction' key missing
-            p_a = sample.get("prior_alpha")
-            p_b = sample.get("prior_beta")
+        # Compute KL(Prior || Target) as a proxy for "Information Gain" required
+        # Or KL(Target || Prior) ?
+        # KL(P || Q): Divergence of Q from P. P is True.
+        # So KL(Target || Prediction).
 
-            if predictions and "alpha" in predictions[0]:
-                 # Handle list of prediction dicts
-                 pass
+        # kl_beta is vectorized thanks to scipy ufuncs
+        kl_divs = self.kl_beta(t_a, t_b, p_a, p_b)
 
-            # Compute KL(Prior || Target) as a proxy for "Information Gain" required
-            # Or KL(Target || Prior) ?
-            # KL(P || Q): Divergence of Q from P. P is True.
-            # So KL(Target || Prediction).
+        # Calculate p_mean
+        # If p_a or p_b is NaN (missing prior), we fall back to t_mean (error = 0)
+        # This replicates the logic: if p_a is not None and p_b is not None: p_mean = p_a/(p_a+p_b) else: p_mean = t_mean
+        p_mean_calc = p_a / (p_a + p_b)
+        p_mean = np.where(np.isnan(p_mean_calc), t_mean, p_mean_calc)
 
-            kl = self.kl_beta(t_a, t_b, p_a, p_b)
-            kl_divs.append(kl)
-
-            if p_a is not None and p_b is not None:
-                p_mean = p_a / (p_a + p_b)
-            else:
-                p_mean = t_mean  # fallback when prior is missing
-            maes.append(abs(p_mean - t_mean))
-            squared_errors.append((p_mean - t_mean)**2)
+        # Calculate errors
+        maes = np.abs(p_mean - t_mean)
+        squared_errors = (p_mean - t_mean)**2
 
         return {
             "samples": len(samples),
-            "kl_divergence": float(np.mean(kl_divs)),
+            "kl_divergence": float(np.nanmean(kl_divs)), # Use nanmean to ignore missing priors
             "mae": float(np.mean(maes)),
             "brier_score": float(np.mean(squared_errors)), # Simulated Brier (MSE)
             "ece": 0.0 # Placeholder
