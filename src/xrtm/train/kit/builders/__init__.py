@@ -31,6 +31,7 @@ Example:
     ... )
 """
 
+from collections import deque
 from datetime import datetime
 from typing import Optional
 
@@ -255,7 +256,7 @@ class TrainingSampleBuilder:
         total_duration = (deadline - start_time).total_seconds()
 
         samples: list[TrainingSample] = []
-        rolling_context: list[str] = []
+        rolling_context: deque[str] = deque(maxlen=self.context_window_size)
 
         for i in range(len(news_events) - 1):
             current_news = news_events[i]
@@ -293,8 +294,6 @@ class TrainingSampleBuilder:
 
             # Update rolling context (FIFO)
             rolling_context.append(current_news.content)
-            if len(rolling_context) > self.context_window_size:
-                rolling_context.pop(0)
 
         return samples
 
