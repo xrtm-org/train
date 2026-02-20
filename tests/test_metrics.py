@@ -1,7 +1,8 @@
 
 import numpy as np
-import pytest
+
 from xrtm.train.metrics import Evaluator
+
 
 def test_missing_prior():
     evaluator = Evaluator()
