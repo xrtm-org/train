@@ -37,3 +37,6 @@ htmlcov/
 site/
 logs/
 output/
+
+# macOS
+.DS_Store
