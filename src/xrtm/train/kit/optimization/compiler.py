@@ -20,6 +20,7 @@ Uses an LLM meta-optimizer to rewrite agent instructions based on
 observed prediction errors, minimizing the Brier score on a held-out dataset.
 """
 
+import asyncio
 import logging
 from typing import Any, List, Tuple
 
@@ -34,8 +35,12 @@ class BrierOptimizer:
     def __init__(self, optimizer_model: Any):
         self.optimizer_model = optimizer_model
 
+    @staticmethod
+    def _calculate_brier_score(dataset: List[Tuple[Any, float, int]]) -> float:
+        return sum((p - g) ** 2 for _, p, g in dataset) / len(dataset)
+
     async def optimize(self, agent: CompiledAgent, dataset: List[Tuple[Any, float, int]]) -> PromptTemplate:
-        total_error = sum((p - g) ** 2 for _, p, g in dataset) / len(dataset)
+        total_error = await asyncio.to_thread(self._calculate_brier_score, dataset)
         meta_prompt = f"""
         You are a Prompt Optimizer for a forecasting engine.
         Current Goal: Minimize Brier Score (Current: {total_error:.4f}).
