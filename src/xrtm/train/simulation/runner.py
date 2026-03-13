@@ -13,6 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""Backtest orchestration with bounded concurrency.
+
+Defines the ``BacktestRunner`` that executes a ``BacktestDataset`` against an
+``Orchestrator``, evaluates each prediction using a configurable ``Evaluator``,
+and aggregates results into an ``EvaluationReport`` with calibration metrics
+and tag-based slice analytics.
+"""
+
 import asyncio
 import logging
 from datetime import datetime
