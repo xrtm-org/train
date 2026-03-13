@@ -13,6 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+r"""Trace serialization and deterministic replay of evaluation runs.
+
+Provides utilities for saving graph states to disk, loading them back, and
+replaying evaluations against new resolutions. Deterministic replay guarantees
+bit-exact reproduction of inputs for a given question and snapshot time when
+inference temperature is zero.
+"""
+
 import logging
 from typing import Optional
 
