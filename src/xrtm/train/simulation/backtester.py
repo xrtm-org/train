@@ -23,7 +23,7 @@ Ensures temporal isolation to prevent look-ahead bias.
 
 import asyncio
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 # From xrtm-data
 from xrtm.data.core.schemas import ForecastQuestion
@@ -34,6 +34,12 @@ from xrtm.eval.core.schemas import ForecastResolution
 
 # From xrtm-forecast (Internal)
 from xrtm.forecast.kit.agents.base import Agent
+
+from xrtm.train.simulation.artifacts import (
+    prediction_value_and_payload,
+    resolution_payload,
+    validate_resolution_for_question,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +68,31 @@ class Backtester:
         Returns:
             An ``EvaluationReport`` containing per-question results and aggregate score.
         """
-        async def process_question(question, resolution):
+        async def process_question(question: ForecastQuestion, resolution: ForecastResolution) -> EvaluationResult:
             try:
                 logger.info("Backtesting question: %s", question.id)
                 prediction = await self.agent.run(question)
-                conf = getattr(prediction, "confidence", prediction)
-                return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
+                validated_resolution = validate_resolution_for_question(resolution, question.id)
+                prediction_value, prediction_payload = prediction_value_and_payload(prediction)
+                result = self.evaluator.evaluate(
+                    prediction=prediction_value, ground_truth=validated_resolution.outcome, subject_id=question.id
+                )
+                result.metadata["resolution_payload"] = resolution_payload(validated_resolution)
+                if prediction_payload is not None:
+                    result.metadata["prediction_payload"] = prediction_payload
+                return result
             except Exception as e:
                 logger.error("Failed to evaluate question %s: %s", question.id, e)
-                return None
+                return EvaluationResult(
+                    subject_id=question.id,
+                    score=1.0,
+                    ground_truth=None,
+                    prediction=0.5,
+                    metadata={"error": str(e), "resolution_payload": resolution_payload(resolution)},
+                )
 
         queue: asyncio.Queue[tuple[int, ForecastQuestion, ForecastResolution]] = asyncio.Queue()
-        processed_results: list[Optional[EvaluationResult]] = [None] * len(dataset)
+        processed_results: list[EvaluationResult | None] = [None] * len(dataset)
         for idx, (question, resolution) in enumerate(dataset):
             queue.put_nowait((idx, question, resolution))
 

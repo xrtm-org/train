@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from xrtm.data import ForecastOutput, ForecastQuestion
 from xrtm.eval import EvaluationResult
+from xrtm.eval.core.schemas import ForecastResolution
 
 from xrtm.train import Backtester
 
@@ -32,16 +33,13 @@ async def test_backtester_flow():
     mock_evaluator = MagicMock()
 
     # Setup Data
-    question = MagicMock(spec=ForecastQuestion)
-    question.id = "q1"
-    resolution = MagicMock()
-    resolution.outcome = 1
+    question = ForecastQuestion(id="q1", title="Question 1")
+    resolution = ForecastResolution(question_id="q1", outcome="yes")
 
-    prediction = MagicMock(spec=ForecastOutput)
-    prediction.confidence = 0.8
+    prediction = ForecastOutput(question_id="q1", probability=0.8, reasoning="full reasoning payload")
     mock_agent.run.return_value = prediction
 
-    eval_result = EvaluationResult(subject_id="q1", score=0.04, ground_truth=1, prediction=0.8)
+    eval_result = EvaluationResult(subject_id="q1", score=0.04, ground_truth="yes", prediction=0.8)
     mock_evaluator.evaluate.return_value = eval_result
 
     # Run Backtester
@@ -51,9 +49,11 @@ async def test_backtester_flow():
     # Assertions
     assert report.total_evaluations == 1
     assert report.mean_score == 0.04
+    assert report.results[0].metadata["prediction_payload"]["reasoning"] == "full reasoning payload"
+    assert report.results[0].metadata["resolution_payload"]["question_id"] == "q1"
 
     mock_agent.run.assert_awaited_once_with(question)
-    mock_evaluator.evaluate.assert_called_once()
+    mock_evaluator.evaluate.assert_called_once_with(prediction=0.8, ground_truth="yes", subject_id="q1")
 
 
 @pytest.mark.asyncio
@@ -79,10 +79,8 @@ async def test_backtester_limits_concurrency():
     )
     dataset = []
     for i in range(10):
-        question = MagicMock(spec=ForecastQuestion)
-        question.id = f"q{i}"
-        resolution = MagicMock()
-        resolution.outcome = 1
+        question = ForecastQuestion(id=f"q{i}", title=f"Question {i}")
+        resolution = ForecastResolution(question_id=f"q{i}", outcome="yes")
         dataset.append((question, resolution))
 
     report = await Backtester(agent=Agent(), evaluator=evaluator, concurrency=3).run(dataset)
@@ -97,6 +95,7 @@ async def test_backtester_preserves_result_order_with_failures():
         async def run(self, question):
             if question.id == "q1":
                 raise RuntimeError("boom")
+            await asyncio.sleep(0.01 * (3 - int(question.id[1:])))
             return 0.8
 
     evaluator = MagicMock()
@@ -108,12 +107,33 @@ async def test_backtester_preserves_result_order_with_failures():
     )
     dataset = []
     for i in range(3):
-        question = MagicMock(spec=ForecastQuestion)
-        question.id = f"q{i}"
-        resolution = MagicMock()
-        resolution.outcome = 1
+        question = ForecastQuestion(id=f"q{i}", title=f"Question {i}")
+        resolution = ForecastResolution(question_id=f"q{i}", outcome="yes")
         dataset.append((question, resolution))
 
     report = await Backtester(agent=Agent(), evaluator=evaluator, concurrency=2).run(dataset)
 
-    assert [result.subject_id for result in report.results] == ["q0", "q2"]
+    assert report.total_evaluations == 3
+    assert [result.subject_id for result in report.results] == ["q0", "q1", "q2"]
+    assert report.results[1].metadata["error"] == "boom"
+
+
+@pytest.mark.asyncio
+async def test_backtester_validates_resolution_schema() -> None:
+    class Agent:
+        async def run(self, question):
+            return 0.8
+
+    question = ForecastQuestion(id="q-valid", title="Question")
+    resolution = ForecastResolution(question_id="other", outcome="yes")
+    evaluator = MagicMock()
+
+    report = await Backtester(agent=Agent(), evaluator=evaluator).run([(question, resolution)])
+
+    assert report.total_evaluations == 1
+    assert report.results[0].subject_id == "q-valid"
+    assert report.results[0].ground_truth is None
+    assert "does not match forecast question" in report.results[0].metadata["error"]
+    assert report.results[0].metadata["resolution_payload"]["question_id"] == "other"
+    assert report.results[0].metadata["resolution_payload"]["outcome"] == "yes"
+    evaluator.evaluate.assert_not_called()
