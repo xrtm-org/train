@@ -18,7 +18,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from xrtm.train.cli import main
+from xrtm.train.cli import DEFAULT_CONFIG, load_config, main
 
 
 def test_data_prepare_builds_jsonl_samples() -> None:
@@ -102,3 +102,47 @@ def test_data_prepare_can_derive_news_and_priors_from_trade_records() -> None:
         assert rows[0]["current_news"] == "Market probability update: 0.400"
         assert rows[0]["prior_alpha"] == 4.0
         assert rows[0]["target_alpha"] == 6.0
+
+
+def test_load_config_deep_merge_does_not_mutate_defaults() -> None:
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        config_path = Path("config.yaml")
+        config_path.write_text("model:\n  name: custom-model\n")
+
+        config = load_config(str(config_path))
+
+        assert config["model"]["name"] == "custom-model"
+        assert config["model"]["family"] == DEFAULT_CONFIG["model"]["family"]
+        assert DEFAULT_CONFIG["model"]["name"] == "Qwen/Qwen2.5-0.5B"
+
+
+def test_train_command_does_not_run_mock_training_by_default() -> None:
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        samples = Path("samples")
+        samples.mkdir()
+        (samples / "train.jsonl").write_text("{}\n")
+        (samples / "val.jsonl").write_text("{}\n")
+
+        result = runner.invoke(main, ["train", "--data", str(samples)])
+
+        assert result.exit_code != 0
+        assert "Real model training is not implemented" in result.output
+
+
+def test_eval_command_does_not_emit_mock_metrics_by_default() -> None:
+    runner = CliRunner()
+
+    with runner.isolated_filesystem():
+        model = Path("model")
+        model.mkdir()
+        data = Path("test.jsonl")
+        data.write_text("{}\n")
+
+        result = runner.invoke(main, ["eval", "--model", str(model), "--data", str(data)])
+
+        assert result.exit_code != 0
+        assert "Real model evaluation is not implemented" in result.output
