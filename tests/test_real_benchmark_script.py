@@ -18,10 +18,15 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 def test_real_benchmark_provider_free_output_shape() -> None:
     workspace_root = Path(__file__).resolve().parents[2]
     script_path = workspace_root / "scripts" / "bench_real.py"
+    if not script_path.exists():
+        pytest.skip("root workspace benchmark script is not available in standalone train CI")
+
     spec = importlib.util.spec_from_file_location("bench_real", script_path)
     assert spec is not None
     assert spec.loader is not None
