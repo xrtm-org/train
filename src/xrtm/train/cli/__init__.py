@@ -33,6 +33,7 @@ Example:
 """
 
 import json
+from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -86,20 +87,27 @@ DEFAULT_CONFIG = {
 
 def load_config(config_path: Optional[str]) -> Dict[str, Any]:
     r"""Load configuration from YAML file, merged with defaults."""
-    config: Dict[str, Any] = DEFAULT_CONFIG.copy()
+    config: Dict[str, Any] = deepcopy(DEFAULT_CONFIG)
 
     if config_path:
         with open(config_path) as f:
-            user_config = yaml.safe_load(f)
+            user_config = yaml.safe_load(f) or {}
+        if not isinstance(user_config, dict):
+            raise ValueError("Training config must be a YAML mapping")
 
-        # Deep merge
-        for key, value in user_config.items():
-            if isinstance(value, dict) and key in config and isinstance(config[key], dict):
-                config[key].update(value)
-            else:
-                config[key] = value
+        _deep_merge(config, user_config)
 
     return config
+
+
+def _deep_merge(base: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
+    r"""Recursively merge overrides into base."""
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+    return base
 
 
 # =============================================================================
@@ -228,6 +236,7 @@ def prepare(
 @click.option("--epochs", type=int, default=None, help="Number of epochs (overrides config)")
 @click.option("--batch-size", type=int, default=None, help="Batch size (overrides config)")
 @click.option("--dry-run", is_flag=True, help="Validate config without training")
+@click.option("--allow-mock", is_flag=True, help="Run the legacy mock training loop for demos only.")
 def train(
     config: Optional[str],
     data_dir: str,
@@ -238,16 +247,16 @@ def train(
     epochs: Optional[int],
     batch_size: Optional[int],
     dry_run: bool,
+    allow_mock: bool,
 ):
     r"""
-    Train a forecasting model with prior injection.
+    Validate training configuration for prior-injected models.
 
-    Supports full fine-tuning and LoRA. Uses Qwen 3 family by default.
-    Progress and checkpoints are saved automatically.
+    Full model training is not wired into the product path yet. Use --dry-run
+    to validate configuration or --allow-mock for the legacy demo loop.
 
     Example:
-        xrtm-train train -c config.yaml -d samples/ -o models/
-        xrtm-train train -d samples/ -m Qwen/Qwen2.5-1.5B --epochs 3
+        xrtm-train train -c config.yaml -d samples/ --dry-run
     """
     # Load and merge config
     cfg = load_config(config)
@@ -289,6 +298,12 @@ def train(
     if dry_run:
         console.print("\n[yellow]Dry run complete. No training performed.[/yellow]")
         return
+
+    if not allow_mock:
+        raise click.ClickException(
+            "Real model training is not implemented in this CLI yet. Use --dry-run to validate config, "
+            "or pass --allow-mock to run the legacy demo loop intentionally."
+        )
 
     # Check for GPU dependencies
     try:
@@ -393,14 +408,16 @@ def _run_training(cfg: dict, data_dir: str, output: str, resume: Optional[str]) 
 @click.option("--model", "-m", required=True, type=click.Path(exists=True), help="Model directory")
 @click.option("--data", "-d", "data_path", required=True, type=click.Path(exists=True), help="Test data file")
 @click.option("--output", "-o", type=click.Path(), help="Output file for results (.json)")
-def eval(model: str, data_path: str, output: Optional[str]):
+@click.option("--allow-mock", is_flag=True, help="Emit the legacy mock metrics for demos only.")
+def eval(model: str, data_path: str, output: Optional[str], allow_mock: bool):
     r"""
-    Evaluate a trained model on test data.
+    Validate evaluation inputs for a trained model.
 
-    Computes calibration metrics, Brier scores, and generates evaluation report.
+    Full model evaluation is not wired into the product path yet. Use --allow-mock
+    only when intentionally exercising the legacy demo metrics.
 
     Example:
-        xrtm-train eval -m models/final -d samples/test.jsonl
+        xrtm-train eval -m models/final -d samples/test.jsonl --allow-mock
     """
     console.print(Panel(
         f"[bold blue]Evaluating Model[/bold blue]\n"
@@ -423,8 +440,14 @@ def eval(model: str, data_path: str, output: Optional[str]):
     test_samples = _load_jsonl(Path(data_path))
     console.print(f"\nLoaded {len(test_samples)} test samples")
 
+    if not allow_mock:
+        raise click.ClickException(
+            "Real model evaluation is not implemented in this CLI yet. Pass --allow-mock to emit "
+            "the legacy demo metrics intentionally."
+        )
+
     # Mock evaluation
-    console.print("\n[yellow]⚠ Full evaluation pending. Using mock metrics.[/yellow]")
+    console.print("\n[yellow]⚠ Using legacy mock metrics because --allow-mock was provided.[/yellow]")
 
     metrics = {
         "brier_score": 0.15,
@@ -469,7 +492,7 @@ def init_config(output: str, model: str, strategy: str):
     Example:
         xrtm-train init-config -o config.yaml -m Qwen/Qwen2.5-7B
     """
-    config: Dict[str, Any] = DEFAULT_CONFIG.copy()
+    config: Dict[str, Any] = deepcopy(DEFAULT_CONFIG)
     config["model"]["name"] = model  # type: ignore[index]
     config["model"]["strategy"] = strategy  # type: ignore[index]
 
