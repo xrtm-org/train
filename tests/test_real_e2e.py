@@ -13,15 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
+import importlib.util
+
 import pytest
 from xrtm.data.core.schemas.forecast import ForecastOutput, MetadataBase
-from xrtm.data.corpora import REAL_BINARY_CORPUS_ID, load_real_binary_corpus
 
-from xrtm.train.real_e2e import (
-    build_resolved_backtest_dataset,
-    build_training_samples_from_resolved_forecasts,
-    evaluate_forecast_records_with_backtest_runner,
-)
+if importlib.util.find_spec("xrtm.data.corpora") is None:
+    pytest.skip("xrtm.data.corpora is not available until the data corpus release lands", allow_module_level=True)
+
+real_corpus = importlib.import_module("xrtm.data.corpora")
+REAL_BINARY_CORPUS_ID = real_corpus.REAL_BINARY_CORPUS_ID
+load_real_binary_corpus = real_corpus.load_real_binary_corpus
+real_e2e = importlib.import_module("xrtm.train.real_e2e")
+build_resolved_backtest_dataset = real_e2e.build_resolved_backtest_dataset
+build_training_samples_from_resolved_forecasts = real_e2e.build_training_samples_from_resolved_forecasts
+evaluate_forecast_records_with_backtest_runner = real_e2e.evaluate_forecast_records_with_backtest_runner
 
 
 def _synthetic_forecast_artifacts(limit: int = 4) -> list[dict]:
