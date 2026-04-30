@@ -21,6 +21,7 @@ bit-exact reproduction of inputs for a given question and snapshot time when
 inference temperature is zero.
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -48,10 +49,15 @@ class TraceReplayer:
             json_str = state.model_dump_json(indent=2)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(json_str)
-            logger.info(f"Trace saved to {path}")
+            logger.info("Trace saved to %s", path)
         except Exception as e:
-            logger.error(f"Failed to save trace to {path}: {e}")
+            logger.error("Failed to save trace to %s: %s", path, e)
             raise
+
+    @staticmethod
+    async def save_trace_async(state: BaseGraphState, path: str) -> None:
+        r"""Asynchronously save a trace without blocking the event loop."""
+        await asyncio.to_thread(TraceReplayer.save_trace, state, path)
 
     @staticmethod
     def load_trace(path: str) -> BaseGraphState:
@@ -61,8 +67,13 @@ class TraceReplayer:
             state = BaseGraphState.model_validate_json(json_str)
             return state
         except Exception as e:
-            logger.error(f"Failed to load trace from {path}: {e}")
+            logger.error("Failed to load trace from %s: %s", path, e)
             raise
+
+    @staticmethod
+    async def load_trace_async(path: str) -> BaseGraphState:
+        r"""Asynchronously load a trace without blocking the event loop."""
+        return await asyncio.to_thread(TraceReplayer.load_trace, path)
 
     def replay_evaluation(
         self,
@@ -87,3 +98,19 @@ class TraceReplayer:
         )
         result.metadata["is_replay"] = True
         return result
+
+    async def replay_evaluation_async(
+        self,
+        trace_path: str,
+        resolution: ForecastResolution | float | str,
+        evaluator: Optional[Evaluator] = None,
+        subject_id_override: Optional[str] = None,
+    ) -> EvaluationResult:
+        r"""Asynchronously replay an evaluation without changing the sync API."""
+        return await asyncio.to_thread(
+            self.replay_evaluation,
+            trace_path,
+            resolution,
+            evaluator,
+            subject_id_override,
+        )

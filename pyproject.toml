@@ -8,7 +8,7 @@ version = "0.2.1"
 description = "The Learning/Optimization layer for XRTM."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 authors = [
     {name = "XRTM Team", email = "moy@xrtm.org"}
 ]
@@ -54,6 +54,9 @@ xrtm-forecast = { workspace = true }
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "strict"
+markers = [
+    "local_llm: marks tests as requiring a local OpenAI-compatible LLM endpoint",
+]
 
 [tool.ruff]
 line-length = 120

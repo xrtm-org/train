@@ -18,7 +18,7 @@ import os
 import tempfile
 from datetime import datetime
 
-from xrtm.data.schemas.forecast import ForecastOutput
+from xrtm.data import ForecastOutput
 from xrtm.forecast.core.schemas.graph import BaseGraphState, TemporalContext
 
 from xrtm.train.simulation.replayer import TraceReplayer

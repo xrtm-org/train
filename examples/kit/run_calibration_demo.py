@@ -16,8 +16,8 @@ import logging
 from datetime import datetime
 from typing import Any, Optional
 
-from xrtm.data.schemas.forecast import ForecastQuestion, MetadataBase
-from xrtm.eval.schemas.forecast import ForecastResolution
+from xrtm.data import ForecastQuestion, MetadataBase
+from xrtm.eval.core.schemas import ForecastResolution
 from xrtm.forecast.core.orchestrator import Orchestrator
 from xrtm.forecast.core.runtime import AsyncRuntime
 from xrtm.forecast.core.schemas.graph import BaseGraphState

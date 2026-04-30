@@ -13,18 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from xrtm.train.real_e2e import (
-    build_resolved_backtest_dataset,
-    build_training_samples_from_resolved_forecasts,
-    evaluate_forecast_records_with_backtest_runner,
-)
-from xrtm.train.simulation.backtester import Backtester
-from xrtm.train.simulation.replayer import TraceReplayer
+import pytest
 
-__all__ = [
-    "Backtester",
-    "TraceReplayer",
-    "build_resolved_backtest_dataset",
-    "build_training_samples_from_resolved_forecasts",
-    "evaluate_forecast_records_with_backtest_runner",
-]
+
+def pytest_addoption(parser):
+    parser.addoption("--run-local-llm", action="store_true", default=False, help="run local LLM tests")
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "local_llm: mark test as requiring a local LLM endpoint")
+
+
+def pytest_collection_modifyitems(config, items):
+    if config.getoption("--run-local-llm"):
+        return
+    skip_local_llm = pytest.mark.skip(reason="need --run-local-llm option to run")
+    for item in items:
+        if "local_llm" in item.keywords:
+            item.add_marker(skip_local_llm)

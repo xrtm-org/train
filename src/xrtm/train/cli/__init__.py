@@ -33,7 +33,7 @@ Example:
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -177,11 +177,21 @@ def prepare(
     priors_data = _load_priors(Path(priors)) if priors else None
 
     # Build samples
-    builder = TrainingSampleBuilder(context_window=context_size)
-    samples = builder.build_from_events(
-        trades=trades_data,
-        news=news_data,
-        priors=priors_data,
+    builder = TrainingSampleBuilder(context_window_size=context_size)
+    news_events = _coerce_news_events(news_data or trades_data)
+    prior_snapshots = _coerce_prior_snapshots(priors_data or trades_data)
+    if len(news_events) != len(prior_snapshots):
+        raise click.ClickException(
+            f"Need matching news events and prior snapshots; got {len(news_events)} news and "
+            f"{len(prior_snapshots)} priors."
+        )
+    deadline = _infer_deadline(news_events)
+    question_id = _infer_question_id(trades_data, news_data, priors_data)
+    samples = builder.build_sequence(
+        question_id=question_id,
+        news_events=news_events,
+        prior_snapshots=prior_snapshots,
+        deadline=deadline,
     )
 
     if not samples:
@@ -476,32 +486,30 @@ def init_config(output: str, model: str, strategy: str):
 # =============================================================================
 
 
-def _load_trades(path: Path) -> list:
+def _load_trades(path: Path) -> list[dict[str, Any]]:
     r"""Load trades from file."""
-    # Reuse from data CLI or implement here
-    return []
+    records = _load_json_records(path)
+    return records
 
 
-def _load_news(path: Path) -> list:
+def _load_news(path: Path) -> list[dict[str, Any]]:
     r"""Load news events from file."""
-    if not path.exists():
-        return []
-
-    with open(path) as f:
-        data = json.load(f)
-
-    return data if isinstance(data, list) else data.get("events", [])
+    return _load_json_records(path)
 
 
-def _load_priors(path: Path) -> Optional[dict]:
+def _load_priors(path: Path) -> Optional[list[dict[str, Any]]]:
     r"""Load pre-fitted priors."""
     if not path.exists():
         return None
 
-    priors = {}
+    priors = []
     for prior_file in path.glob("*.json"):
         with open(prior_file) as f:
-            priors[prior_file.stem] = json.load(f)
+            prior = json.load(f)
+            if isinstance(prior, list):
+                priors.extend(prior)
+            else:
+                priors.append(prior)
 
     return priors
 
@@ -511,7 +519,7 @@ def _save_jsonl(samples: list, path: Path) -> None:
     with open(path, "w") as f:
         for sample in samples:
             if hasattr(sample, "model_dump"):
-                f.write(json.dumps(sample.model_dump()) + "\n")
+                f.write(json.dumps(sample.model_dump(mode="json")) + "\n")
             else:
                 f.write(json.dumps(sample) + "\n")
 
@@ -525,6 +533,113 @@ def _load_jsonl(path: Path) -> list:
                 if line.strip():
                     samples.append(json.loads(line))
     return samples
+
+
+def _load_json_records(path: Path) -> list[dict[str, Any]]:
+    r"""Load a JSON object/list into a list of records."""
+    if not path.exists():
+        return []
+
+    with open(path) as f:
+        data = json.load(f)
+
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("events", "trades", "priors", "records", "data"):
+            records = data.get(key)
+            if isinstance(records, list):
+                return records
+        return [data]
+    raise click.ClickException(f"Expected JSON object or list in {path}")
+
+
+def _parse_timestamp(value: Any) -> datetime:
+    r"""Parse a timestamp field into an aware UTC datetime."""
+    if value is None:
+        raise click.ClickException("Each record must include a timestamp.")
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, (int, float)):
+        parsed = datetime.fromtimestamp(value, tz=timezone.utc)
+    elif isinstance(value, str):
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+    else:
+        raise click.ClickException(f"Unsupported timestamp value: {value!r}")
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _record_timestamp(record: dict[str, Any]) -> datetime:
+    r"""Read a timestamp from common field names."""
+    for key in ("timestamp", "snapshot_time", "created_at", "time"):
+        if key in record:
+            return _parse_timestamp(record[key])
+    raise click.ClickException(f"Record is missing a timestamp: {record}")
+
+
+def _coerce_news_events(records: list[dict[str, Any]]) -> list[Any]:
+    r"""Convert JSON records into TrainingSampleBuilder news events."""
+    from xrtm.train.kit.builders import NewsEvent
+
+    events = []
+    for record in records:
+        content = record.get("content") or record.get("headline") or record.get("title")
+        if content is None:
+            probability = record.get("probability", record.get("price"))
+            content = f"Market probability update: {float(probability):.3f}" if probability is not None else "Market update"
+        events.append(
+            NewsEvent(
+                content=str(content),
+                timestamp=_record_timestamp(record),
+                source=record.get("source"),
+            )
+        )
+    return events
+
+
+def _coerce_prior_snapshots(records: list[dict[str, Any]]) -> list[Any]:
+    r"""Convert JSON records into beta prior snapshots."""
+    from xrtm.train.kit.builders import BetaPriorSnapshot
+
+    snapshots = []
+    for record in records:
+        if "alpha" in record and "beta" in record:
+            alpha = float(record["alpha"])
+            beta = float(record["beta"])
+        else:
+            raw_probability = record.get("probability", record.get("price"))
+            if raw_probability is None:
+                raise click.ClickException(f"Prior record needs alpha/beta or probability/price: {record}")
+            probability = max(0.001, min(0.999, float(raw_probability)))
+            strength = max(2.0, float(record.get("amount", record.get("volume", 100.0))))
+            alpha = max(0.01, probability * strength)
+            beta = max(0.01, (1.0 - probability) * strength)
+        snapshots.append(BetaPriorSnapshot(alpha=alpha, beta=beta, timestamp=_record_timestamp(record)))
+    return snapshots
+
+
+def _infer_deadline(news_events: list[Any]) -> datetime:
+    r"""Infer a deadline after the last available event."""
+    if not news_events:
+        return datetime.now(timezone.utc) + timedelta(days=1)
+    latest = max(event.timestamp for event in news_events)
+    return latest + timedelta(days=1)
+
+
+def _infer_question_id(*record_groups: Optional[list[dict[str, Any]]]) -> str:
+    r"""Infer a stable question id from input records."""
+    for group in record_groups:
+        if not group:
+            continue
+        for record in group:
+            question_id = record.get("question_id") or record.get("market_id") or record.get("id")
+            if question_id:
+                return str(question_id)
+    return "training-sample"
 
 
 if __name__ == "__main__":
