@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xrtm-train"
-version = "0.2.2"
+version = "0.2.3"
 description = "The Learning/Optimization layer for XRTM."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,8 +20,8 @@ dependencies = [
     "rich>=13.0.0",
     "pyyaml>=6.0.0",
     "xrtm-data>=0.2.2",
-    "xrtm-eval>=0.2.2",
-    "xrtm-forecast>=0.6.2",
+    "xrtm-eval>=0.2.3",
+    "xrtm-forecast>=0.6.3",
 ]
 
 [project.optional-dependencies]
@@ -45,11 +45,6 @@ xrtm-train = "xrtm.train.cli:main"
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = {find = {where = ["src"], include = ["xrtm*"], namespaces = true}}
-
-[tool.uv.sources]
-xrtm-data = { workspace = true }
-xrtm-eval = { workspace = true }
-xrtm-forecast = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
