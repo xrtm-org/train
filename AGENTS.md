@@ -32,6 +32,7 @@ identity: THE LAB
   - Verify that `TraceReplayer` tests are passing to ensure existing baselines are stable.
 
 - **ON PR**:
+  - Read `../governance/policies/pr-acceptance-policy.md` before accepting, superseding, rejecting, or deferring PRs.
   - Aggressively grep for leaks of `resolution` or `ground_truth` in the backtesting loop.
   - Verify that new components support `AsyncRuntime`.
   - Ensure any new `Backtester` logic includes a corresponding test case in `TraceReplayer`.

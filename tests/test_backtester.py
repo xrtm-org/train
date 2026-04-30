@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -53,3 +54,66 @@ async def test_backtester_flow():
 
     mock_agent.run.assert_awaited_once_with(question)
     mock_evaluator.evaluate.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_backtester_limits_concurrency():
+    max_active = 0
+    active = 0
+
+    class Agent:
+        async def run(self, question):
+            nonlocal active, max_active
+            active += 1
+            max_active = max(max_active, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return 0.8
+
+    evaluator = MagicMock()
+    evaluator.evaluate.side_effect = lambda prediction, ground_truth, subject_id: EvaluationResult(
+        subject_id=subject_id,
+        score=0.04,
+        ground_truth=ground_truth,
+        prediction=prediction,
+    )
+    dataset = []
+    for i in range(10):
+        question = MagicMock(spec=ForecastQuestion)
+        question.id = f"q{i}"
+        resolution = MagicMock()
+        resolution.outcome = 1
+        dataset.append((question, resolution))
+
+    report = await Backtester(agent=Agent(), evaluator=evaluator, concurrency=3).run(dataset)
+
+    assert report.total_evaluations == 10
+    assert max_active <= 3
+
+
+@pytest.mark.asyncio
+async def test_backtester_preserves_result_order_with_failures():
+    class Agent:
+        async def run(self, question):
+            if question.id == "q1":
+                raise RuntimeError("boom")
+            return 0.8
+
+    evaluator = MagicMock()
+    evaluator.evaluate.side_effect = lambda prediction, ground_truth, subject_id: EvaluationResult(
+        subject_id=subject_id,
+        score=0.04,
+        ground_truth=ground_truth,
+        prediction=prediction,
+    )
+    dataset = []
+    for i in range(3):
+        question = MagicMock(spec=ForecastQuestion)
+        question.id = f"q{i}"
+        resolution = MagicMock()
+        resolution.outcome = 1
+        dataset.append((question, resolution))
+
+    report = await Backtester(agent=Agent(), evaluator=evaluator, concurrency=2).run(dataset)
+
+    assert [result.subject_id for result in report.results] == ["q0", "q2"]

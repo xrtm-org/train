@@ -23,13 +23,13 @@ Ensures temporal isolation to prevent look-ahead bias.
 
 import asyncio
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 # From xrtm-data
 from xrtm.data.core.schemas import ForecastQuestion
 
 # From xrtm-eval
-from xrtm.eval.core.eval.definitions import EvaluationReport, Evaluator
+from xrtm.eval.core.eval.definitions import EvaluationReport, EvaluationResult, Evaluator
 from xrtm.eval.core.schemas import ForecastResolution
 
 # From xrtm-forecast (Internal)
@@ -46,9 +46,12 @@ class Backtester:
         evaluator: Scoring backend implementing the ``Evaluator`` protocol.
     """
 
-    def __init__(self, agent: Agent, evaluator: Evaluator):
+    def __init__(self, agent: Agent, evaluator: Evaluator, concurrency: int = 5):
+        if concurrency < 1:
+            raise ValueError("concurrency must be >= 1")
         self.agent = agent
         self.evaluator = evaluator
+        self.concurrency = concurrency
 
     async def run(self, dataset: List[Tuple[ForecastQuestion, ForecastResolution]]) -> EvaluationReport:
         r"""Run the full backtest and return an evaluation report.
@@ -61,19 +64,36 @@ class Backtester:
         """
         async def process_question(question, resolution):
             try:
-                logger.info(f"Backtesting question: {question.id}")
+                logger.info("Backtesting question: %s", question.id)
                 prediction = await self.agent.run(question)
                 conf = getattr(prediction, "confidence", prediction)
                 return self.evaluator.evaluate(prediction=conf, ground_truth=resolution.outcome, subject_id=question.id)
             except Exception as e:
-                logger.error(f"Failed to evaluate question {question.id}: {e}")
+                logger.error("Failed to evaluate question %s: %s", question.id, e)
                 return None
 
-        # Execute all questions concurrently
-        tasks = [process_question(q, r) for q, r in dataset]
-        processed_results = await asyncio.gather(*tasks)
+        queue: asyncio.Queue[tuple[int, ForecastQuestion, ForecastResolution]] = asyncio.Queue()
+        processed_results: list[Optional[EvaluationResult]] = [None] * len(dataset)
+        for idx, (question, resolution) in enumerate(dataset):
+            queue.put_nowait((idx, question, resolution))
 
-        # Filter out failed evaluations
+        async def worker() -> None:
+            while True:
+                try:
+                    idx, question, resolution = queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    return
+                try:
+                    processed_results[idx] = await process_question(question, resolution)
+                finally:
+                    queue.task_done()
+
+        if dataset:
+            worker_count = min(self.concurrency, len(dataset))
+            workers = [asyncio.create_task(worker()) for _ in range(worker_count)]
+            await queue.join()
+            await asyncio.gather(*workers)
+
         results = [res for res in processed_results if res is not None]
 
         count = len(results)

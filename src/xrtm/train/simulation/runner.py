@@ -73,35 +73,36 @@ class BacktestRunner:
         entry_node: str = "ingestion",
         concurrency: int = 5,
     ):
+        if concurrency < 1:
+            raise ValueError("concurrency must be >= 1")
         self.orchestrator = orchestrator
         self.evaluator = evaluator or BrierScoreEvaluator()
         self.entry_node = entry_node
-        self.semaphore = asyncio.Semaphore(concurrency)
+        self.concurrency = concurrency
 
     async def _run_single(self, instance: BacktestInstance) -> EvaluationResult:
-        async with self.semaphore:
-            state = BaseGraphState(
-                subject_id=instance.question.id,
-                temporal_context=TemporalContext(reference_time=instance.reference_time, is_backtest=True),
-            )
-            state.context["question_title"] = instance.question.title
-            if instance.question.content:
-                state.context["question_content"] = instance.question.content
+        state = BaseGraphState(
+            subject_id=instance.question.id,
+            temporal_context=TemporalContext(reference_time=instance.reference_time, is_backtest=True),
+        )
+        state.context["question_title"] = instance.question.title
+        if instance.question.content:
+            state.context["question_content"] = instance.question.content
 
-            try:
-                await self.orchestrator.run(state, entry_node=self.entry_node)
-                return self.evaluate_state(
-                    state, instance.resolution, instance.question.id, instance.reference_time, instance.tags
-                )
-            except Exception as e:
-                logger.error(f"Backtest error on {instance.question.id}: {e}")
-                return EvaluationResult(
-                    subject_id=instance.question.id,
-                    score=1.0,
-                    ground_truth=instance.resolution.outcome,
-                    prediction=0.5,
-                    metadata={"error": str(e)},
-                )
+        try:
+            await self.orchestrator.run(state, entry_node=self.entry_node)
+            return self.evaluate_state(
+                state, instance.resolution, instance.question.id, instance.reference_time, instance.tags
+            )
+        except Exception as e:
+            logger.error("Backtest error on %s: %s", instance.question.id, e)
+            return EvaluationResult(
+                subject_id=instance.question.id,
+                score=1.0,
+                ground_truth=instance.resolution.outcome,
+                prediction=0.5,
+                metadata={"error": str(e)},
+            )
 
     def evaluate_state(
         self,
@@ -118,6 +119,9 @@ class BacktestRunner:
                 break
             elif isinstance(report, dict) and "confidence" in report:
                 prediction_val = float(report["confidence"])
+                break
+            elif isinstance(report, dict) and "probability" in report:
+                prediction_val = float(report["probability"])
                 break
             elif isinstance(report, (int, float)):
                 prediction_val = float(report)
@@ -147,8 +151,30 @@ class BacktestRunner:
         return eval_res
 
     async def run(self, dataset: BacktestDataset) -> EvaluationReport:
-        tasks = [self._run_single(item) for item in dataset.items]
-        results = await asyncio.gather(*tasks)
+        results: list[EvaluationResult] = []
+        if dataset.items:
+            queue: asyncio.Queue[tuple[int, BacktestInstance]] = asyncio.Queue()
+            ordered_results: list[Optional[EvaluationResult]] = [None] * len(dataset.items)
+            for idx, item in enumerate(dataset.items):
+                queue.put_nowait((idx, item))
+
+            async def worker() -> None:
+                while True:
+                    try:
+                        idx, item = queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        return
+                    try:
+                        ordered_results[idx] = await self._run_single(item)
+                    finally:
+                        queue.task_done()
+
+            worker_count = min(self.concurrency, len(dataset.items))
+            workers = [asyncio.create_task(worker()) for _ in range(worker_count)]
+            await queue.join()
+            await asyncio.gather(*workers)
+            results = [result for result in ordered_results if result is not None]
+
         total_score = sum(r.score for r in results)
         count = len(results)
         mean_score = total_score / count if count > 0 else 0.0
