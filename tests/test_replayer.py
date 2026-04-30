@@ -47,7 +47,11 @@ async def test_async_trace_save_load_and_replay_preserve_sync_api(tmp_path):
     replayer = TraceReplayer()
     sync_result = replayer.replay_evaluation(str(path), "yes")
     async_result = await replayer.replay_evaluation_async(str(path), "yes")
+    second_sync_result = replayer.replay_evaluation(str(path), "yes")
 
     assert sync_result.score == pytest.approx(0.04)
+    assert sync_result.model_dump(mode="json") == second_sync_result.model_dump(mode="json")
     assert async_result.score == pytest.approx(sync_result.score)
     assert async_result.metadata["is_replay"] is True
+    assert async_result.metadata["prediction_payload"]["reasoning"] == "test"
+    assert async_result.metadata["resolution_payload"]["metadata"]["source"] == "replay_override"

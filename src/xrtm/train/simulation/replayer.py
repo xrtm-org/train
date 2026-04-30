@@ -23,6 +23,7 @@ inference temperature is zero.
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 
 # From xrtm-eval
@@ -85,8 +86,16 @@ class TraceReplayer:
         state = self.load_trace(trace_path)
         subject_id = subject_id_override or state.subject_id
         if not isinstance(resolution, ForecastResolution):
+            resolved_at = (
+                state.temporal_context.reference_time
+                if state.temporal_context is not None
+                else datetime(1970, 1, 1, tzinfo=timezone.utc)
+            )
             resolution = ForecastResolution(
-                question_id=subject_id, outcome=str(resolution), metadata={"source": "replay_override"}
+                question_id=subject_id,
+                outcome=str(resolution),
+                resolved_at=resolved_at,
+                metadata={"source": "replay_override"},
             )
         dummy_orch: Orchestrator[BaseGraphState] = Orchestrator()
         runner = BacktestRunner(orchestrator=dummy_orch, evaluator=evaluator)

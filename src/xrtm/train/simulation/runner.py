@@ -24,9 +24,9 @@ and tag-based slice analytics.
 import asyncio
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 # From xrtm-data
 from xrtm.data.core.schemas.forecast import ForecastOutput, ForecastQuestion
@@ -41,11 +41,14 @@ from xrtm.eval.kit.eval.metrics import BrierScoreEvaluator, ExpectedCalibrationE
 from xrtm.forecast.core.orchestrator import Orchestrator
 from xrtm.forecast.core.schemas.graph import BaseGraphState, TemporalContext
 
+from xrtm.train.simulation.artifacts import (
+    normalize_binary_outcome,
+    prediction_value_and_payload,
+    resolution_payload,
+    validate_resolution_for_question,
+)
+
 logger = logging.getLogger(__name__)
-
-TRUE_VALUES = {"true", "yes", "1", "pass"}
-FALSE_VALUES = {"false", "no", "0", "fail"}
-
 
 class BacktestInstance(BaseModel):
     """Represents a single instance in a backtest dataset."""
@@ -54,6 +57,11 @@ class BacktestInstance(BaseModel):
     resolution: ForecastResolution
     reference_time: datetime
     tags: Optional[List[str]] = None
+
+    @model_validator(mode="after")
+    def validate_resolution_matches_question(self) -> Self:
+        validate_resolution_for_question(self.resolution, self.question.id)
+        return self
 
 
 class BacktestDataset(BaseModel):
@@ -101,7 +109,7 @@ class BacktestRunner:
                 score=1.0,
                 ground_truth=instance.resolution.outcome,
                 prediction=0.5,
-                metadata={"error": str(e)},
+                metadata={"error": str(e), "resolution_payload": resolution_payload(instance.resolution)},
             )
 
     def evaluate_state(
@@ -112,37 +120,36 @@ class BacktestRunner:
         reference_time: Optional[datetime] = None,
         tags: Optional[List[str]] = None,
     ) -> EvaluationResult:
+        validated_resolution = validate_resolution_for_question(resolution, subject_id)
         prediction_val = 0.5
-        for _, report in reversed(state.node_reports.items()):
+        prediction_payload = None
+        prediction_node = None
+        for node_name, report in reversed(state.node_reports.items()):
             if isinstance(report, ForecastOutput):
-                prediction_val = report.confidence
+                prediction_val, prediction_payload = prediction_value_and_payload(report)
+                prediction_node = node_name
                 break
             elif isinstance(report, dict) and "confidence" in report:
-                prediction_val = float(report["confidence"])
+                prediction_val, prediction_payload = prediction_value_and_payload(report)
+                prediction_node = node_name
                 break
             elif isinstance(report, dict) and "probability" in report:
-                prediction_val = float(report["probability"])
+                prediction_val, prediction_payload = prediction_value_and_payload(report)
+                prediction_node = node_name
                 break
             elif isinstance(report, (int, float)):
-                prediction_val = float(report)
+                prediction_val, prediction_payload = prediction_value_and_payload(report)
+                prediction_node = node_name
                 break
 
-        outcome_raw = resolution.outcome
-        if isinstance(outcome_raw, str):
-            lowered = outcome_raw.lower()
-            if lowered in TRUE_VALUES:
-                gt_val = 1.0
-            elif lowered in FALSE_VALUES:
-                gt_val = 0.0
-            else:
-                try:
-                    gt_val = float(outcome_raw)
-                except ValueError:
-                    gt_val = 0.0
-        else:
-            gt_val = float(outcome_raw)
+        gt_val = normalize_binary_outcome(validated_resolution.outcome)
 
         eval_res = self.evaluator.evaluate(prediction=prediction_val, ground_truth=gt_val, subject_id=subject_id)
+        eval_res.metadata["resolution_payload"] = resolution_payload(validated_resolution)
+        if prediction_payload is not None:
+            eval_res.metadata["prediction_payload"] = prediction_payload
+        if prediction_node is not None:
+            eval_res.metadata["prediction_node"] = prediction_node
         if reference_time:
             eval_res.metadata["reference_time"] = reference_time.isoformat()
         eval_res.metadata["total_latency"] = sum(state.latencies.values())
