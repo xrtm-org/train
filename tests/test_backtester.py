@@ -36,7 +36,11 @@ async def test_backtester_flow():
     question = ForecastQuestion(id="q1", title="Question 1")
     resolution = ForecastResolution(question_id="q1", outcome="yes")
 
-    prediction = ForecastOutput(question_id="q1", probability=0.8, reasoning="full reasoning payload")
+    prediction = ForecastOutput(
+        forecast_request_id="q1",
+        probability=0.8,
+        reasoning_trace={"narrative": "full reasoning payload"},
+    )
     mock_agent.run.return_value = prediction
 
     eval_result = EvaluationResult(subject_id="q1", score=0.04, ground_truth="yes", prediction=0.8)
@@ -49,8 +53,8 @@ async def test_backtester_flow():
     # Assertions
     assert report.total_evaluations == 1
     assert report.mean_score == 0.04
-    assert report.results[0].metadata["prediction_payload"]["reasoning"] == "full reasoning payload"
-    assert report.results[0].metadata["resolution_payload"]["question_id"] == "q1"
+    assert report.results[0].metadata["prediction_payload"]["reasoning_trace"]["narrative"] == "full reasoning payload"
+    assert report.results[0].metadata["resolution_payload"]["forecast_request_id"] == "q1"
 
     mock_agent.run.assert_awaited_once_with(question)
     mock_evaluator.evaluate.assert_called_once_with(prediction=0.8, ground_truth="yes", subject_id="q1")
@@ -133,7 +137,7 @@ async def test_backtester_validates_resolution_schema() -> None:
     assert report.total_evaluations == 1
     assert report.results[0].subject_id == "q-valid"
     assert report.results[0].ground_truth is None
-    assert "does not match forecast question" in report.results[0].metadata["error"]
-    assert report.results[0].metadata["resolution_payload"]["question_id"] == "other"
+    assert "does not match forecast request" in report.results[0].metadata["error"]
+    assert report.results[0].metadata["resolution_payload"]["forecast_request_id"] == "other"
     assert report.results[0].metadata["resolution_payload"]["outcome"] == "yes"
     evaluator.evaluate.assert_not_called()

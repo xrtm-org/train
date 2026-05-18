@@ -36,7 +36,7 @@ def validate_resolution_for_question(resolution: Any, question_id: str) -> Forec
 
     if validated.question_id != question_id:
         raise ValueError(
-            f"Resolution question_id {validated.question_id!r} does not match forecast question {question_id!r}"
+            f"Resolution forecast_request_id {validated.forecast_request_id!r} does not match forecast request {question_id!r}"
         )
     return validated
 
@@ -67,14 +67,17 @@ def prediction_value_and_payload(prediction: Any) -> tuple[float, dict[str, Any]
     r"""Extract a scoring probability and full payload from a prediction object."""
     payload = serialize_payload(prediction)
     if isinstance(prediction, ForecastOutput):
-        return float(prediction.confidence), payload
+        return float(prediction.probability), payload
     if isinstance(prediction, Mapping):
-        if "confidence" in prediction:
-            return float(prediction["confidence"]), payload
         if "probability" in prediction:
             return float(prediction["probability"]), payload
+        if "confidence" in prediction:
+            return float(prediction["confidence"]), payload
     if isinstance(prediction, (int, float)):
         return float(prediction), payload
+    probability = getattr(prediction, "probability", None)
+    if probability is not None:
+        return float(probability), payload
     return float(getattr(prediction, "confidence", prediction)), payload
 
 

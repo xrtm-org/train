@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""Trace serialization and deterministic replay of evaluation runs.
+r"""Execution-trace serialization and deterministic replay of evaluation runs.
 
-Provides utilities for saving graph states to disk, loading them back, and
+Provides utilities for saving workflow run state to disk, loading it back, and
 replaying evaluations against new resolutions. Deterministic replay guarantees
 bit-exact reproduction of inputs for a given question and snapshot time when
 inference temperature is zero.
@@ -42,39 +42,59 @@ logger = logging.getLogger(__name__)
 
 
 class TraceReplayer:
-    """Utility class for saving, loading, and replaying evaluation traces."""
+    """Utility class for saving, loading, and replaying execution traces."""
 
     @staticmethod
-    def save_trace(state: BaseGraphState, path: str) -> None:
+    def save_execution_trace(state: BaseGraphState, path: str) -> None:
         try:
             json_str = state.model_dump_json(indent=2)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(json_str)
-            logger.info("Trace saved to %s", path)
+            logger.info("Execution trace saved to %s", path)
         except Exception as e:
-            logger.error("Failed to save trace to %s: %s", path, e)
+            logger.error("Failed to save execution trace to %s: %s", path, e)
             raise
 
     @staticmethod
-    async def save_trace_async(state: BaseGraphState, path: str) -> None:
-        r"""Asynchronously save a trace without blocking the event loop."""
-        await asyncio.to_thread(TraceReplayer.save_trace, state, path)
+    async def save_execution_trace_async(state: BaseGraphState, path: str) -> None:
+        r"""Asynchronously save an execution trace without blocking the event loop."""
+        await asyncio.to_thread(TraceReplayer.save_execution_trace, state, path)
 
     @staticmethod
-    def load_trace(path: str) -> BaseGraphState:
+    def load_execution_trace(path: str) -> BaseGraphState:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 json_str = f.read()
             state = BaseGraphState.model_validate_json(json_str)
             return state
         except Exception as e:
-            logger.error("Failed to load trace from %s: %s", path, e)
+            logger.error("Failed to load execution trace from %s: %s", path, e)
             raise
 
     @staticmethod
+    async def load_execution_trace_async(path: str) -> BaseGraphState:
+        r"""Asynchronously load an execution trace without blocking the event loop."""
+        return await asyncio.to_thread(TraceReplayer.load_execution_trace, path)
+
+    @staticmethod
+    def save_trace(state: BaseGraphState, path: str) -> None:
+        r"""Backward compatibility wrapper for ``save_execution_trace``."""
+        TraceReplayer.save_execution_trace(state, path)
+
+    @staticmethod
+    async def save_trace_async(state: BaseGraphState, path: str) -> None:
+        r"""Backward compatibility wrapper for ``save_execution_trace_async``."""
+        await TraceReplayer.save_execution_trace_async(state, path)
+
+    @staticmethod
+    def load_trace(path: str) -> BaseGraphState:
+        r"""Backward compatibility wrapper for ``load_execution_trace``."""
+        return TraceReplayer.load_execution_trace(path)
+
+    @staticmethod
     async def load_trace_async(path: str) -> BaseGraphState:
-        r"""Asynchronously load a trace without blocking the event loop."""
-        return await asyncio.to_thread(TraceReplayer.load_trace, path)
+        r"""Backward compatibility wrapper for ``load_execution_trace_async``."""
+        return await TraceReplayer.load_execution_trace_async(path)
 
     def replay_evaluation(
         self,
@@ -83,7 +103,7 @@ class TraceReplayer:
         evaluator: Optional[Evaluator] = None,
         subject_id_override: Optional[str] = None,
     ) -> EvaluationResult:
-        state = self.load_trace(trace_path)
+        state = self.load_execution_trace(trace_path)
         subject_id = subject_id_override or state.subject_id
         if not isinstance(resolution, ForecastResolution):
             resolved_at = (

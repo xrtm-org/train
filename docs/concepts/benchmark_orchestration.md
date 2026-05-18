@@ -37,7 +37,9 @@ Public comparison material belongs in the separate external lane:
 - inspectable competitor outputs
 
 That lane is modeled by `ExternalBenchmarkLaneSpec` and
-`ExternalBenchmarkLaneResult`. It is intentionally ingestion/reporting-only:
+`ExternalBenchmarkLaneResult`. Its canonical serialized field is
+`evaluation_path` (`reporting_lane` remains a compatibility alias), and it is
+intentionally ingestion/reporting-only:
 
 - no repeated-arm runner semantics
 - no claim that a third-party system is locally reproducible

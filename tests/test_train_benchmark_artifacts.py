@@ -130,14 +130,14 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
             ExternalBenchmarkSourceSpec(
                 source_id="metaculus-community",
                 display_name="Metaculus Community",
-                reporting_lane="public-human-baseline",
+                evaluation_path="public-human-baseline",
                 source_name="Metaculus",
                 source_url="https://www.metaculus.com/questions/",
             ),
             ExternalBenchmarkSourceSpec(
                 source_id="arena-output",
                 display_name="Arena Output Review",
-                reporting_lane="public-inspectable-output",
+                evaluation_path="public-inspectable-output",
                 source_name="Forecast Arena",
                 source_url="https://arena.example/submissions/123",
                 refresh_notes="manual weekly ingestion",
@@ -155,7 +155,7 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
                 benchmark_name="ForecastBench",
                 system_id="metaculus-community",
                 display_name="Metaculus Community",
-                reporting_lane="public-human-baseline",
+                evaluation_path="public-human-baseline",
                 primary_score_name="brier",
                 primary_score=0.17,
                 captured_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
@@ -167,7 +167,7 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
                 benchmark_name="ForecastBench",
                 system_id="arena-output",
                 display_name="Forecast Arena Submission #123",
-                reporting_lane="public-inspectable-output",
+                evaluation_path="public-inspectable-output",
                 primary_score_name="brier",
                 primary_score=0.15,
                 captured_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
@@ -202,8 +202,9 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
     snapshot = result.to_public_scorecard_snapshot()
 
     assert result.duration_seconds == 3.0
+    assert result.evaluation_paths() == ["public-human-baseline", "public-inspectable-output"]
     assert result.reporting_lanes() == ["public-human-baseline", "public-inspectable-output"]
-    assert snapshot.reporting_lanes() == ["public-human-baseline", "public-inspectable-output"]
+    assert snapshot.evaluation_paths() == ["public-human-baseline", "public-inspectable-output"]
     assert snapshot.rows[0].metadata["source_id"] == "metaculus-community"
     assert snapshot.rows[1].inspectable_output is not None
     assert snapshot.metadata["lane_id"] == "forecastbench-public-20260507"

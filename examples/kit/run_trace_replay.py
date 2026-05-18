@@ -56,7 +56,7 @@ def main():
         trace_path = tmp.name
 
     logger.info(f"Saving execution trace to: {trace_path}")
-    TraceReplayer.save_trace(live_state, trace_path)
+    TraceReplayer.save_execution_trace(live_state, trace_path)
 
     # 3. Offline Replay (Scenario A: Truth = YES)
     logger.info("\n--- Replay A: Ground Truth = YES (1.0) ---")

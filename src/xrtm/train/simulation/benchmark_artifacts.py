@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from xrtm.eval.core.eval.benchmark_artifacts import (
     BenchmarkComparisonSnapshot,
     BenchmarkScoreSummary,
@@ -139,15 +139,30 @@ class BenchmarkSuiteResult(BaseModel):
 class ExternalBenchmarkSourceSpec(BaseModel):
     """Typed definition for one public benchmark source to ingest for reporting."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     source_id: str
     display_name: str
-    reporting_lane: ExternalBenchmarkReportingLane
+    evaluation_path: ExternalBenchmarkReportingLane = Field(
+        ...,
+        validation_alias=AliasChoices("evaluation_path", "reporting_lane"),
+    )
     source_name: str
     source_url: Optional[str] = None
     source_version: Optional[str] = None
     scoring_rule: Optional[str] = None
     refresh_notes: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def reporting_lane(self) -> ExternalBenchmarkReportingLane:
+        """Backward compatibility alias for ``evaluation_path``."""
+        return self.evaluation_path
+
+    @reporting_lane.setter
+    def reporting_lane(self, value: ExternalBenchmarkReportingLane) -> None:
+        """Backward compatibility setter for ``evaluation_path``."""
+        self.evaluation_path = value
 
 
 class ExternalBenchmarkLaneSpec(BaseModel):
@@ -182,7 +197,11 @@ class ExternalBenchmarkLaneResult(BaseModel):
 
     def reporting_lanes(self) -> list[str]:
         """Return the distinct public comparison lanes represented in this result."""
-        return sorted({comparison.reporting_lane for comparison in self.comparisons})
+        return self.evaluation_paths()
+
+    def evaluation_paths(self) -> list[str]:
+        """Return the distinct public evaluation paths represented in this result."""
+        return sorted({comparison.evaluation_path for comparison in self.comparisons})
 
     def to_public_scorecard_snapshot(
         self,
