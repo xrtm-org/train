@@ -16,7 +16,7 @@
 r"""Backtest orchestration with bounded concurrency.
 
 Defines the ``BacktestRunner`` that executes a ``BacktestDataset`` against an
-``Orchestrator``, evaluates each prediction using a configurable ``Evaluator``,
+workflow ``Orchestrator``, evaluates each forecast result using a configurable ``Evaluator``,
 and aggregates results into an ``EvaluationReport`` with calibration metrics
 and tag-based slice analytics.
 """
@@ -51,7 +51,7 @@ from xrtm.train.simulation.artifacts import (
 logger = logging.getLogger(__name__)
 
 class BacktestInstance(BaseModel):
-    """Represents a single instance in a backtest dataset."""
+    """Represents a single forecast-request / resolution pair in a backtest dataset."""
 
     question: ForecastQuestion
     resolution: ForecastResolution
@@ -129,11 +129,11 @@ class BacktestRunner:
                 prediction_val, prediction_payload = prediction_value_and_payload(report)
                 prediction_node = node_name
                 break
-            elif isinstance(report, dict) and "confidence" in report:
+            elif isinstance(report, dict) and "probability" in report:
                 prediction_val, prediction_payload = prediction_value_and_payload(report)
                 prediction_node = node_name
                 break
-            elif isinstance(report, dict) and "probability" in report:
+            elif isinstance(report, dict) and "confidence" in report:
                 prediction_val, prediction_payload = prediction_value_and_payload(report)
                 prediction_node = node_name
                 break

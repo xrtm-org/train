@@ -36,12 +36,12 @@ def _state() -> BaseGraphState:
 async def test_async_trace_save_load_and_replay_preserve_sync_api(tmp_path):
     path = tmp_path / "trace.json"
 
-    TraceReplayer.save_trace(_state(), str(path))
-    loaded_sync = TraceReplayer.load_trace(str(path))
+    TraceReplayer.save_execution_trace(_state(), str(path))
+    loaded_sync = TraceReplayer.load_execution_trace(str(path))
     assert loaded_sync.subject_id == "q1"
 
-    await TraceReplayer.save_trace_async(_state(), str(path))
-    loaded_async = await TraceReplayer.load_trace_async(str(path))
+    await TraceReplayer.save_execution_trace_async(_state(), str(path))
+    loaded_async = await TraceReplayer.load_execution_trace_async(str(path))
     assert loaded_async.subject_id == "q1"
 
     replayer = TraceReplayer()
@@ -53,5 +53,5 @@ async def test_async_trace_save_load_and_replay_preserve_sync_api(tmp_path):
     assert sync_result.model_dump(mode="json") == second_sync_result.model_dump(mode="json")
     assert async_result.score == pytest.approx(sync_result.score)
     assert async_result.metadata["is_replay"] is True
-    assert async_result.metadata["prediction_payload"]["reasoning"] == "test"
+    assert async_result.metadata["prediction_payload"]["reasoning_trace"]["narrative"] == "test"
     assert async_result.metadata["resolution_payload"]["metadata"]["source"] == "replay_override"

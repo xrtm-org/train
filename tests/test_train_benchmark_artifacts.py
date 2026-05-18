@@ -16,6 +16,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pydantic import ValidationError
 from xrtm.eval.core.eval.benchmark_artifacts import (
     BenchmarkComparisonSnapshot,
     BenchmarkScoreSummary,
@@ -36,6 +37,23 @@ from xrtm.train.simulation.benchmark_artifacts import (
     ExternalBenchmarkLaneSpec,
     ExternalBenchmarkSourceSpec,
 )
+
+
+def _external_comparison_record(**kwargs) -> ExternalComparisonRecord:
+    try:
+        return ExternalComparisonRecord(**kwargs)
+    except ValidationError:
+        if "evaluation_path" not in kwargs:
+            raise
+        compat_kwargs = dict(kwargs)
+        compat_kwargs["reporting_lane"] = compat_kwargs.pop("evaluation_path")
+        return ExternalComparisonRecord(**compat_kwargs)
+
+
+def _scorecard_evaluation_paths(snapshot) -> list[str]:
+    if hasattr(snapshot, "evaluation_paths"):
+        return snapshot.evaluation_paths()
+    return snapshot.reporting_lanes()
 
 
 def test_benchmark_run_result_bundle_tracks_duration_and_paths() -> None:
@@ -130,14 +148,14 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
             ExternalBenchmarkSourceSpec(
                 source_id="metaculus-community",
                 display_name="Metaculus Community",
-                reporting_lane="public-human-baseline",
+                evaluation_path="public-human-baseline",
                 source_name="Metaculus",
                 source_url="https://www.metaculus.com/questions/",
             ),
             ExternalBenchmarkSourceSpec(
                 source_id="arena-output",
                 display_name="Arena Output Review",
-                reporting_lane="public-inspectable-output",
+                evaluation_path="public-inspectable-output",
                 source_name="Forecast Arena",
                 source_url="https://arena.example/submissions/123",
                 refresh_notes="manual weekly ingestion",
@@ -150,24 +168,24 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
         completed_at=datetime(2026, 5, 7, 8, 0, 3, tzinfo=timezone.utc),
         spec=spec,
         comparisons=[
-            ExternalComparisonRecord(
+            _external_comparison_record(
                 benchmark_id="forecastbench",
                 benchmark_name="ForecastBench",
                 system_id="metaculus-community",
                 display_name="Metaculus Community",
-                reporting_lane="public-human-baseline",
+                evaluation_path="public-human-baseline",
                 primary_score_name="brier",
                 primary_score=0.17,
                 captured_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
                 source_name="Metaculus",
                 source_id="metaculus-community",
             ),
-            ExternalComparisonRecord(
+            _external_comparison_record(
                 benchmark_id="forecastbench",
                 benchmark_name="ForecastBench",
                 system_id="arena-output",
                 display_name="Forecast Arena Submission #123",
-                reporting_lane="public-inspectable-output",
+                evaluation_path="public-inspectable-output",
                 primary_score_name="brier",
                 primary_score=0.15,
                 captured_at=datetime(2026, 5, 7, tzinfo=timezone.utc),
@@ -202,8 +220,9 @@ def test_external_benchmark_lane_result_builds_public_scorecard_snapshot() -> No
     snapshot = result.to_public_scorecard_snapshot()
 
     assert result.duration_seconds == 3.0
+    assert result.evaluation_paths() == ["public-human-baseline", "public-inspectable-output"]
     assert result.reporting_lanes() == ["public-human-baseline", "public-inspectable-output"]
-    assert snapshot.reporting_lanes() == ["public-human-baseline", "public-inspectable-output"]
+    assert _scorecard_evaluation_paths(snapshot) == ["public-human-baseline", "public-inspectable-output"]
     assert snapshot.rows[0].metadata["source_id"] == "metaculus-community"
     assert snapshot.rows[1].inspectable_output is not None
     assert snapshot.metadata["lane_id"] == "forecastbench-public-20260507"

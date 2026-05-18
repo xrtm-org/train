@@ -25,6 +25,23 @@ from xrtm.forecast.core.schemas.graph import BaseGraphState
 from xrtm.train.simulation.runner import BacktestDataset, BacktestInstance, BacktestRunner
 
 
+def _forecast_output(question_id: str, probability: float, narrative: str, trace: list[str]) -> ForecastOutput:
+    try:
+        return ForecastOutput(
+            question_id=question_id,
+            probability=probability,
+            reasoning=narrative,
+            structural_trace=trace,
+        )
+    except Exception:
+        return ForecastOutput(
+            forecast_request_id=question_id,
+            probability=probability,
+            reasoning_trace={"narrative": narrative},
+            execution_trace=trace,
+        )
+
+
 class TrackingOrchestrator:
     def __init__(self, fail_id: str | None = None, delays: dict[str, float] | None = None) -> None:
         self.fail_id = fail_id
@@ -81,12 +98,12 @@ async def test_backtest_runner_failed_items_do_not_leak_none_into_report():
     assert all(result is not None for result in report.results)
     assert report.results[1].subject_id == "q1"
     assert report.results[1].metadata["error"] == "orchestrator boom"
-    assert report.results[1].metadata["resolution_payload"]["question_id"] == "q1"
+    assert report.results[1].metadata["resolution_payload"]["forecast_request_id"] == "q1"
     assert report.reliability_bins is not None
 
 
 def test_backtest_instance_validates_resolution_question_id() -> None:
-    with pytest.raises(ValidationError, match="does not match forecast question"):
+    with pytest.raises(ValidationError, match="does not match forecast request"):
         BacktestInstance(
             question=ForecastQuestion(id="q1", title="Question 1"),
             resolution=ForecastResolution(question_id="q2", outcome="yes"),
@@ -99,11 +116,11 @@ def test_backtest_runner_preserves_forecast_output_payload() -> None:
     state = BaseGraphState(
         subject_id="q1",
         node_reports={
-            "final_forecast": ForecastOutput(
-                question_id="q1",
-                probability=0.7,
-                reasoning="detailed forecast rationale",
-                structural_trace=["ingestion", "forecast"],
+            "final_forecast": _forecast_output(
+                "q1",
+                0.7,
+                "detailed forecast rationale",
+                ["ingestion", "forecast"],
             )
         },
     )
@@ -119,8 +136,8 @@ def test_backtest_runner_preserves_forecast_output_payload() -> None:
 
     assert result.prediction == pytest.approx(0.7)
     assert result.metadata["prediction_node"] == "final_forecast"
-    assert result.metadata["prediction_payload"]["reasoning"] == "detailed forecast rationale"
-    assert result.metadata["prediction_payload"]["structural_trace"] == ["ingestion", "forecast"]
+    assert result.metadata["prediction_payload"]["reasoning_trace"]["narrative"] == "detailed forecast rationale"
+    assert result.metadata["prediction_payload"]["execution_trace"] == ["ingestion", "forecast"]
     assert result.metadata["resolution_payload"]["outcome"] == "yes"
 
 

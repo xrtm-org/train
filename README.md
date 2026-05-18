@@ -6,7 +6,10 @@
 
 **The Optimization Layer for XRTM.**
 
-`xrtm-train` is the engine that closes the loop. It simulates history by replaying agents against past "Ground Truth" snapshots stored in `xrtm-data`, scoring them with `xrtm-eval`, and optimizing their reasoning parameters.
+`xrtm-train` is the engine that closes the loop. It simulates history by
+replaying forecast workflows against past ground-truth snapshots stored in
+`xrtm-data`, scoring the resulting forecast results with `xrtm-eval`, and
+optimizing their reasoning parameters.
 
 ## Part of the XRTM Ecosystem
 
@@ -47,7 +50,7 @@ print(f"Mean Brier Score: {results.mean_score}")
 With the v0.6.0 architecture split, calibration and replay examples now live here:
 
 *   **[Calibration Demo](examples/kit/run_calibration_demo.py)**: Adjusting confidence intervals to match reality.
-*   **[Trace Replay](examples/kit/run_trace_replay.py)**: Re-running a saved execution for debugging.
+*   **[Trace Replay](examples/kit/run_trace_replay.py)**: Re-running a saved execution trace for debugging.
 *   **[Evaluation Harness](examples/kit/run_evaluation_harness.py)**: End-to-end backtest with metrics.
 
 ## Project Structure
