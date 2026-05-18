@@ -201,7 +201,7 @@ class ExternalBenchmarkLaneResult(BaseModel):
 
     def evaluation_paths(self) -> list[str]:
         """Return the distinct public evaluation paths represented in this result."""
-        return sorted({comparison.evaluation_path for comparison in self.comparisons})
+        return sorted({_comparison_evaluation_path(comparison) for comparison in self.comparisons})
 
     def to_public_scorecard_snapshot(
         self,
@@ -222,6 +222,13 @@ class ExternalBenchmarkLaneResult(BaseModel):
             rows=[comparison.to_scorecard_row() for comparison in self.comparisons],
             metadata=snapshot_metadata,
         )
+
+
+def _comparison_evaluation_path(comparison: ExternalComparisonRecord) -> str:
+    path = getattr(comparison, "evaluation_path", None)
+    if path is None:
+        path = getattr(comparison, "reporting_lane")
+    return path
 
 
 __all__ = [

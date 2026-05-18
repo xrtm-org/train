@@ -25,6 +25,23 @@ from xrtm.forecast.core.schemas.graph import BaseGraphState
 from xrtm.train.simulation.runner import BacktestDataset, BacktestInstance, BacktestRunner
 
 
+def _forecast_output(question_id: str, probability: float, narrative: str, trace: list[str]) -> ForecastOutput:
+    try:
+        return ForecastOutput(
+            question_id=question_id,
+            probability=probability,
+            reasoning=narrative,
+            structural_trace=trace,
+        )
+    except Exception:
+        return ForecastOutput(
+            forecast_request_id=question_id,
+            probability=probability,
+            reasoning_trace={"narrative": narrative},
+            execution_trace=trace,
+        )
+
+
 class TrackingOrchestrator:
     def __init__(self, fail_id: str | None = None, delays: dict[str, float] | None = None) -> None:
         self.fail_id = fail_id
@@ -99,11 +116,11 @@ def test_backtest_runner_preserves_forecast_output_payload() -> None:
     state = BaseGraphState(
         subject_id="q1",
         node_reports={
-            "final_forecast": ForecastOutput(
-                forecast_request_id="q1",
-                probability=0.7,
-                reasoning_trace={"narrative": "detailed forecast rationale"},
-                execution_trace=["ingestion", "forecast"],
+            "final_forecast": _forecast_output(
+                "q1",
+                0.7,
+                "detailed forecast rationale",
+                ["ingestion", "forecast"],
             )
         },
     )

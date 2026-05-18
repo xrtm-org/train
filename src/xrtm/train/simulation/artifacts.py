@@ -34,16 +34,17 @@ def validate_resolution_for_question(resolution: Any, question_id: str) -> Forec
     else:
         validated = ForecastResolution.model_validate(resolution)
 
-    if validated.question_id != question_id:
+    resolution_id = _subject_identifier(validated)
+    if resolution_id != question_id:
         raise ValueError(
-            f"Resolution forecast_request_id {validated.forecast_request_id!r} does not match forecast request {question_id!r}"
+            f"Resolution question_id {resolution_id!r} does not match forecast request {question_id!r}"
         )
     return validated
 
 
 def resolution_payload(resolution: ForecastResolution) -> dict[str, Any]:
     r"""Return a JSON-safe payload for a validated resolution."""
-    return resolution.model_dump(mode="json")
+    return _with_identifier_aliases(resolution.model_dump(mode="json"))
 
 
 def normalize_binary_outcome(outcome_raw: Any) -> float:
@@ -84,10 +85,48 @@ def prediction_value_and_payload(prediction: Any) -> tuple[float, dict[str, Any]
 def serialize_payload(value: Any) -> dict[str, Any] | None:
     r"""Serialize rich prediction artifacts without discarding useful fields."""
     if isinstance(value, BaseModel):
-        return value.model_dump(mode="json")
+        payload = value.model_dump(mode="json")
+        if isinstance(value, ForecastOutput):
+            payload = _with_forecast_output_aliases(payload, value)
+        return _with_payload_aliases(payload)
     if isinstance(value, Mapping):
-        return {str(key): _json_safe(val) for key, val in value.items()}
+        return _with_payload_aliases({str(key): _json_safe(val) for key, val in value.items()})
     return None
+
+
+def _subject_identifier(value: Any) -> str | None:
+    return getattr(value, "question_id", None) or getattr(value, "forecast_request_id", None)
+
+
+def _with_identifier_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    if "question_id" in payload and "forecast_request_id" not in payload:
+        payload["forecast_request_id"] = payload["question_id"]
+    if "forecast_request_id" in payload and "question_id" not in payload:
+        payload["question_id"] = payload["forecast_request_id"]
+    return payload
+
+
+def _with_payload_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    _with_identifier_aliases(payload)
+    if "reasoning_trace" not in payload and "reasoning" in payload:
+        payload["reasoning_trace"] = {"narrative": payload["reasoning"]}
+    if "execution_trace" not in payload and "structural_trace" in payload:
+        payload["execution_trace"] = payload["structural_trace"]
+    if "structural_trace" not in payload and "execution_trace" in payload:
+        payload["structural_trace"] = payload["execution_trace"]
+    return payload
+
+
+def _with_forecast_output_aliases(payload: dict[str, Any], value: ForecastOutput) -> dict[str, Any]:
+    if "reasoning_trace" not in payload:
+        trace = getattr(value, "reasoning_trace", None)
+        if trace is not None:
+            payload["reasoning_trace"] = _json_safe(trace)
+    if "execution_trace" not in payload and "structural_trace" in payload:
+        payload["execution_trace"] = payload["structural_trace"]
+    if "structural_trace" not in payload and "execution_trace" in payload:
+        payload["structural_trace"] = payload["execution_trace"]
+    return payload
 
 
 def _json_safe(value: Any) -> Any:

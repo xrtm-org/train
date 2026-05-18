@@ -24,6 +24,21 @@ from xrtm.eval.core.schemas import ForecastResolution
 from xrtm.train import Backtester
 
 
+def _forecast_output(question_id: str, probability: float, narrative: str) -> ForecastOutput:
+    try:
+        return ForecastOutput(
+            question_id=question_id,
+            probability=probability,
+            reasoning=narrative,
+        )
+    except Exception:
+        return ForecastOutput(
+            forecast_request_id=question_id,
+            probability=probability,
+            reasoning_trace={"narrative": narrative},
+        )
+
+
 @pytest.mark.asyncio
 async def test_backtester_flow():
     """Verify that Backtester correctly calls agent and evaluator."""
@@ -36,11 +51,7 @@ async def test_backtester_flow():
     question = ForecastQuestion(id="q1", title="Question 1")
     resolution = ForecastResolution(question_id="q1", outcome="yes")
 
-    prediction = ForecastOutput(
-        forecast_request_id="q1",
-        probability=0.8,
-        reasoning_trace={"narrative": "full reasoning payload"},
-    )
+    prediction = _forecast_output("q1", 0.8, "full reasoning payload")
     mock_agent.run.return_value = prediction
 
     eval_result = EvaluationResult(subject_id="q1", score=0.04, ground_truth="yes", prediction=0.8)
