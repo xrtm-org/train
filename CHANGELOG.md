@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-05-18
+
+### Changed
+- Standardize train artifact terminology around evaluation paths, reasoning traces, and reporting lanes.
+- Require the coordinated release floors for `xrtm-data>=0.2.7`, `xrtm-eval>=0.2.7`, and `xrtm-forecast>=0.6.11`.
+
+### Fixed
+- Normalize artifact aliases so released train remains compatible with current sibling package schemas.
+
 ## [0.2.7] - 2026-05-10
 
 ### Added
