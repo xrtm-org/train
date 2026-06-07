@@ -29,7 +29,7 @@ from xrtm.train import BacktestRunner
 ```
 
 ### TraceReplayer
-Save and replay execution traces for deterministic evaluation.
+Save and replay execution traces for reproducible evaluation.
 
 ```python
 from xrtm.train import TraceReplayer
