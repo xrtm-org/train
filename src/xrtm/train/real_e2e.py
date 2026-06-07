@@ -65,7 +65,7 @@ def build_resolved_backtest_dataset(
                         "resolution_notes": corpus_record.resolution_notes,
                     },
                 ),
-                reference_time=output.output.output.metadata.snapshot_time,
+                reference_time=output.output.metadata.snapshot_time,
                 tags=list(output.output.metadata.tags),
             )
         )
