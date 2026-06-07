@@ -52,7 +52,7 @@ def build_resolved_backtest_dataset(
             continue
 
         outcome = "yes" if corpus_record.resolved_outcome else "no"
-        resolved_at = corpus_record.resolution_time or output.metadata.snapshot_time
+        resolved_at = corpus_record.resolution_time or output.output.metadata.snapshot_time
         items.append(
             BacktestInstance(
                 question=question,
@@ -65,8 +65,8 @@ def build_resolved_backtest_dataset(
                         "resolution_notes": corpus_record.resolution_notes,
                     },
                 ),
-                reference_time=output.metadata.snapshot_time,
-                tags=list(output.metadata.tags),
+                reference_time=output.output.output.metadata.snapshot_time,
+                tags=list(output.output.metadata.tags),
             )
         )
 
@@ -133,7 +133,7 @@ def build_training_samples_from_resolved_forecasts(
         if corpus_record is None or corpus_record.resolved_outcome is None:
             continue
 
-        snapshot_time = output.metadata.snapshot_time
+        snapshot_time = output.output.metadata.snapshot_time
         resolution_time = corpus_record.resolution_time or snapshot_time
         probability = _clamp_probability(output.probability)
         target_mean = target_probability if corpus_record.resolved_outcome else 1.0 - target_probability
