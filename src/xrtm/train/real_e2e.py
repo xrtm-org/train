@@ -46,8 +46,8 @@ def build_resolved_backtest_dataset(
     items: list[BacktestInstance] = []
 
     for output in outputs:
-        corpus_record = corpus_by_id.get(output.question_id)
-        question = questions_by_id.get(output.question_id)
+        corpus_record = corpus_by_id.get(output.output.question_id)
+        question = questions_by_id.get(output.output.question_id)
         if corpus_record is None or question is None or corpus_record.resolved_outcome is None:
             continue
 
@@ -57,7 +57,7 @@ def build_resolved_backtest_dataset(
             BacktestInstance(
                 question=question,
                 resolution=ForecastResolution(
-                    question_id=output.question_id,
+                    question_id=output.output.question_id,
                     outcome=outcome,
                     resolved_at=resolved_at,
                     metadata={
@@ -80,7 +80,7 @@ def evaluate_forecast_records_with_backtest_runner(
 ) -> EvaluationReport:
     r"""Evaluate resolved forecast records through train's existing backtest runner path."""
     outputs = coerce_forecast_outputs(records)
-    output_by_id = {output.question_id: output for output in outputs}
+    output_by_id = {output.output.question_id: output for output in outputs}
     dataset = build_resolved_backtest_dataset(outputs)
     runner = BacktestRunner(orchestrator=Orchestrator(), evaluator=BrierScoreEvaluator())
     results: list[EvaluationResult] = []
@@ -129,20 +129,20 @@ def build_training_samples_from_resolved_forecasts(
     samples: list[TrainingSample] = []
 
     for output in outputs:
-        corpus_record = corpus_by_id.get(output.question_id)
+        corpus_record = corpus_by_id.get(output.output.question_id)
         if corpus_record is None or corpus_record.resolved_outcome is None:
             continue
 
         snapshot_time = output.output.metadata.snapshot_time
         resolution_time = corpus_record.resolution_time or snapshot_time
-        probability = _clamp_probability(output.probability)
+        probability = _clamp_probability(output.output.probability)
         target_mean = target_probability if corpus_record.resolved_outcome else 1.0 - target_probability
         samples.extend(
             builder.build_sequence(
-                question_id=output.question_id,
+                question_id=output.output.question_id,
                 news_events=[
                     NewsEvent(
-                        content=output.reasoning,
+                        content=output.output.reasoning,
                         timestamp=snapshot_time,
                         source="forecast_artifact",
                     ),
