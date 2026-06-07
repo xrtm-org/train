@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from xrtm.train.simulation.backtester import Backtester
-from xrtm.train.simulation.runner import BacktestRunner
 from xrtm.train.simulation.benchmark_artifacts import (
     BenchmarkRunResultBundle,
     BenchmarkRunSpec,
@@ -27,6 +26,7 @@ from xrtm.train.simulation.benchmark_artifacts import (
     ExternalBenchmarkSourceSpec,
 )
 from xrtm.train.simulation.replayer import TraceReplayer
+from xrtm.train.simulation.runner import BacktestRunner
 
 __all__ = [
     "Backtester",
