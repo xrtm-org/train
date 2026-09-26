@@ -13,16 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""
-Version information for xrtm-train.
-
-This module provides the single source of truth for the package version.
-"""
-
-__all__ = ["__version__", "__author__", "__contact__", "__license__", "__copyright__"]
-
-__version__ = "0.3.2"
-__author__ = "XRTM Team"
-__contact__ = "moy@xrtm.org"
-__license__ = "Apache-2.0"
-__copyright__ = "Copyright 2026 XRTM Team"
+r"""Simulation and backtesting runners."""
