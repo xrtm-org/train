@@ -23,7 +23,7 @@ Ensures temporal isolation to prevent look-ahead bias.
 
 import asyncio
 import logging
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 # From xrtm-data
 from xrtm.data.core.schemas import ForecastQuestion
@@ -42,6 +42,19 @@ from xrtm.train.simulation.artifacts import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_resolution_payload(resolution: Any) -> dict[str, Any]:
+    r"""JSON-safe resolution payload that never raises.
+
+    Error handling must not depend on the payload being well-formed: a
+    non-model resolution used to raise here, killing the worker task and
+    hanging ``queue.join()`` forever.
+    """
+    try:
+        return resolution_payload(resolution)
+    except Exception:  # noqa: BLE001 - degrade, never raise from the error path
+        return {"unavailable": True}
 
 
 class Backtester:
@@ -88,7 +101,7 @@ class Backtester:
                     score=1.0,
                     ground_truth=None,
                     prediction=0.5,
-                    metadata={"error": str(e), "resolution_payload": resolution_payload(resolution)},
+                    metadata={"error": str(e), "resolution_payload": _safe_resolution_payload(resolution)},
                 )
 
         queue: asyncio.Queue[tuple[int, ForecastQuestion, ForecastResolution]] = asyncio.Queue()
@@ -115,12 +128,20 @@ class Backtester:
 
         results = [res for res in processed_results if res is not None]
 
-        count = len(results)
-        total_score = sum(res.score for res in results)
+        # Failures carry a placeholder score (1.0) and must not pollute the
+        # aggregate; count them separately instead.
+        scored = [res for res in results if not (getattr(res, "metadata", None) or {}).get("error")]
+        error_count = len(results) - len(scored)
+        count = len(scored)
+        total_score = sum(res.score for res in scored)
         mean_score = total_score / count if count > 0 else 0.0
 
         return EvaluationReport(
-            metric_name="Brier Score", mean_score=mean_score, total_evaluations=count, results=results
+            metric_name="Brier Score",
+            mean_score=mean_score,
+            total_evaluations=len(results),
+            results=results,
+            summary_statistics={"errors": error_count},
         )
 
 

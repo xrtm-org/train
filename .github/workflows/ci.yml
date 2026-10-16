@@ -42,6 +42,7 @@ jobs:
           xrtm-data = { workspace = true }
           xrtm-eval = { workspace = true }
           xrtm-forecast = { workspace = true }
+          xrtm-train = { workspace = true }
           EOF
 
       - name: Install uv

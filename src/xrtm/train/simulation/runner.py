@@ -182,19 +182,24 @@ class BacktestRunner:
             await asyncio.gather(*workers)
             results = [result for result in ordered_results if result is not None]
 
-        total_score = sum(r.score for r in results)
-        count = len(results)
+        # Failures carry a placeholder score and must not pollute aggregates.
+        scored_results = [
+            result for result in results if not (getattr(result, "metadata", None) or {}).get("error")
+        ]
+        total_score = sum(r.score for r in scored_results)
+        count = len(scored_results)
+        error_count = len(results) - len(scored_results)
         mean_score = total_score / count if count > 0 else 0.0
         ece_evaluator = ExpectedCalibrationErrorEvaluator()
-        ece_score, ece_bins = ece_evaluator.compute_calibration_data(results)
-        slices = SliceAnalytics.compute_slices(results)
+        ece_score, ece_bins = ece_evaluator.compute_calibration_data(scored_results)
+        slices = SliceAnalytics.compute_slices(scored_results)
         return EvaluationReport(
             metric_name=getattr(self.evaluator, "name", "Brier Score"),
             mean_score=mean_score,
-            total_evaluations=count,
+            total_evaluations=len(results),
             results=results,
             reliability_bins=ece_bins,
-            summary_statistics={"ece": ece_score},
+            summary_statistics={"ece": ece_score, "errors": error_count},
             slices=slices,
         )
 
