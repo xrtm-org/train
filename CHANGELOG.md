@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-10-16
+
+### Fixed
+- Malformed resolutions no longer hang the backtester: the error path cannot raise
+  (`_safe_resolution_payload`), and failure placeholders are excluded from mean
+  score / ECE / slices (`summary_statistics["errors"]` reports the count).
+- `Backtester` normalizes ground truth through `normalize_binary_outcome`, matching
+  `BacktestRunner` (both APIs now hand evaluators floats, not strings).
+- CI workspace maps `xrtm-train` as a source (install fix).
+
+## [0.3.2] - 2026-09-26
+
+### Changed
+- Subpackage marker release (packaging alignment with the 0.3.x line).
+
+## [0.3.0] - 2026-09-10
+
+### Added
+- Real-question E2E evaluation path (`real_e2e.evaluate_forecast_records_with_backtest_runner`).
+- `SliceAnalytics` per-slice summaries in evaluation reports.
+
+## [0.2.9] - 2026-06-20
+
+### Fixed
+- Trace replay determinism and coarse clock handling.
+
 ## [0.2.8] - 2026-05-18
 
 ### Changed

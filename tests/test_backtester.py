@@ -68,7 +68,7 @@ async def test_backtester_flow():
     assert report.results[0].metadata["resolution_payload"]["forecast_request_id"] == "q1"
 
     mock_agent.run.assert_awaited_once_with(question)
-    mock_evaluator.evaluate.assert_called_once_with(prediction=0.8, ground_truth="yes", subject_id="q1")
+    mock_evaluator.evaluate.assert_called_once_with(prediction=0.8, ground_truth=1.0, subject_id="q1")
 
 
 @pytest.mark.asyncio
