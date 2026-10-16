@@ -17,6 +17,7 @@ r"""Shared schema and artifact helpers for simulation backtests."""
 
 from collections.abc import Mapping
 from datetime import date, datetime
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
@@ -48,7 +49,11 @@ def resolution_payload(resolution: ForecastResolution) -> dict[str, Any]:
 
 
 def normalize_binary_outcome(outcome_raw: Any) -> float:
-    r"""Normalize common binary resolution values for evaluators."""
+    r"""Normalize common binary resolution values for evaluators.
+
+    Raises ``ValueError`` for anything that is not a recognized binary
+    outcome (e.g. ``0.7`` or ``"maybe"``) instead of passing it through.
+    """
     if isinstance(outcome_raw, bool):
         return 1.0 if outcome_raw else 0.0
     if isinstance(outcome_raw, str):
@@ -58,10 +63,19 @@ def normalize_binary_outcome(outcome_raw: Any) -> float:
         if lowered in FALSE_VALUES:
             return 0.0
         try:
-            return float(outcome_raw)
+            numeric = float(outcome_raw)
         except ValueError:
             raise ValueError(f"Unsupported binary outcome string: {outcome_raw!r}") from None
-    return float(outcome_raw)
+        if numeric not in (0.0, 1.0):
+            raise ValueError(f"Binary outcome must be 0 or 1. Got {outcome_raw!r}")
+        return numeric
+    try:
+        value = float(outcome_raw)
+    except (TypeError, ValueError):
+        raise ValueError(f"Unsupported binary outcome: {outcome_raw!r}") from None
+    if value not in (0.0, 1.0):
+        raise ValueError(f"Binary outcome must be 0 or 1. Got {outcome_raw!r}")
+    return value
 
 
 def prediction_value_and_payload(prediction: Any) -> tuple[float, dict[str, Any] | None]:
@@ -134,10 +148,16 @@ def _json_safe(value: Any) -> Any:
         return value.model_dump(mode="json")
     if isinstance(value, Mapping):
         return {str(key): _json_safe(val) for key, val in value.items()}
-    if isinstance(value, list):
-        return [_json_safe(item) for item in value]
-    if isinstance(value, tuple):
+    if isinstance(value, (set, frozenset)):
+        return [_json_safe(item) for item in sorted(value, key=repr)]
+    if isinstance(value, (list, tuple)):
         return [_json_safe(item) for item in value]
     if isinstance(value, (datetime, date)):
         return value.isoformat()
-    return value
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    # Unknown objects must not survive to json.dumps (which would raise later
+    # with no context); stringify as a last resort.
+    return str(value)

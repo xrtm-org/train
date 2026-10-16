@@ -124,20 +124,24 @@ class BacktestRunner:
         prediction_val = 0.5
         prediction_payload = None
         prediction_node = None
-        for node_name, report in reversed(state.node_reports.items()):
+        # Prefer an explicit designated output node; otherwise take the most
+        # recent report. ``bool`` is not a numeric prediction.
+        output_node = state.context.get("output_node") if isinstance(state.context, dict) else None
+        if output_node and output_node in state.node_reports:
+            candidate_names = [output_node]
+        else:
+            candidate_names = list(reversed(state.node_reports.keys()))
+        for node_name in candidate_names:
+            report = state.node_reports[node_name]
             if isinstance(report, ForecastOutput):
                 prediction_val, prediction_payload = prediction_value_and_payload(report)
                 prediction_node = node_name
                 break
-            elif isinstance(report, dict) and "probability" in report:
+            elif isinstance(report, dict) and ("probability" in report or "confidence" in report):
                 prediction_val, prediction_payload = prediction_value_and_payload(report)
                 prediction_node = node_name
                 break
-            elif isinstance(report, dict) and "confidence" in report:
-                prediction_val, prediction_payload = prediction_value_and_payload(report)
-                prediction_node = node_name
-                break
-            elif isinstance(report, (int, float)):
+            elif isinstance(report, (int, float)) and not isinstance(report, bool):
                 prediction_val, prediction_payload = prediction_value_and_payload(report)
                 prediction_node = node_name
                 break
