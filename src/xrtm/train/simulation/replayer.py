@@ -23,7 +23,9 @@ inference temperature is zero.
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 # From xrtm-eval
@@ -48,8 +50,12 @@ class TraceReplayer:
     def save_execution_trace(state: BaseGraphState, path: str) -> None:
         try:
             json_str = state.model_dump_json(indent=2)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(json_str)
+            target = Path(path)
+            tmp = target.with_suffix(target.suffix + ".tmp")
+            tmp.write_text(json_str, encoding="utf-8")
+            # Atomic swap: a killed process must not leave a torn trace that
+            # load_execution_trace then rejects.
+            os.replace(tmp, target)
             logger.info("Execution trace saved to %s", path)
         except Exception as e:
             logger.error("Failed to save execution trace to %s: %s", path, e)

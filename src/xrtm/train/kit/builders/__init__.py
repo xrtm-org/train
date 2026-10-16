@@ -234,12 +234,12 @@ class TrainingSampleBuilder:
             >>> # Sample 2: Prior(7,3) + "Confirmed..." → Target(95,5)
             >>> # Note: Sample 2.prior == Sample 1.target (Teacher Forcing)
         """
-        if len(news_events) < 2 or len(prior_snapshots) < 2:
-            return []
-
         if len(news_events) != len(prior_snapshots):
             msg = "news_events and prior_snapshots must have same length"
             raise ValueError(msg)
+
+        if len(news_events) < 2:
+            return []
 
         # Sort by timestamp
         paired = sorted(
