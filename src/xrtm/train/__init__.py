@@ -26,10 +26,12 @@ from xrtm.train.simulation.benchmark_artifacts import (
     ExternalBenchmarkSourceSpec,
 )
 from xrtm.train.simulation.replayer import TraceReplayer
-from xrtm.train.simulation.runner import BacktestRunner
+from xrtm.train.simulation.runner import BacktestDataset, BacktestInstance, BacktestRunner
 
 __all__ = [
     "Backtester",
+    "BacktestDataset",
+    "BacktestInstance",
     "BacktestRunner",
     "BenchmarkRunSpec",
     "BenchmarkRunResultBundle",

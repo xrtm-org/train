@@ -36,6 +36,7 @@ from xrtm.eval.core.schemas import ForecastResolution
 from xrtm.forecast.kit.agents.base import Agent
 
 from xrtm.train.simulation.artifacts import (
+    normalize_binary_outcome,
     prediction_value_and_payload,
     resolution_payload,
     validate_resolution_for_question,
@@ -88,7 +89,9 @@ class Backtester:
                 validated_resolution = validate_resolution_for_question(resolution, question.id)
                 prediction_value, prediction_payload = prediction_value_and_payload(prediction)
                 result = self.evaluator.evaluate(
-                    prediction=prediction_value, ground_truth=validated_resolution.outcome, subject_id=question.id
+                    prediction=prediction_value,
+                    ground_truth=normalize_binary_outcome(validated_resolution.outcome),
+                    subject_id=question.id,
                 )
                 result.metadata["resolution_payload"] = resolution_payload(validated_resolution)
                 if prediction_payload is not None:
