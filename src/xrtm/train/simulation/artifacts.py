@@ -48,6 +48,17 @@ def resolution_payload(resolution: ForecastResolution) -> dict[str, Any]:
     return _with_identifier_aliases(resolution.model_dump(mode="json"))
 
 
+def excluded_from_aggregates(result: Any) -> bool:
+    r"""True when an ``EvaluationResult`` must not be averaged into metrics.
+
+    Failures carry a 1.0 placeholder score and abstentions (unusable rows)
+    carry 0.0; averaging either distorts the aggregate — one flatters, the
+    other punishes. Both are counted separately in ``summary_statistics``.
+    """
+    metadata = getattr(result, "metadata", None) or {}
+    return bool(metadata.get("error") or metadata.get("abstained"))
+
+
 def normalize_binary_outcome(outcome_raw: Any) -> float:
     r"""Normalize common binary resolution values for evaluators.
 

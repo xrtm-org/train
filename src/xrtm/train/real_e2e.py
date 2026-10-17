@@ -31,6 +31,7 @@ from xrtm.forecast.core.orchestrator import Orchestrator
 from xrtm.forecast.core.schemas.graph import BaseGraphState, TemporalContext
 
 from xrtm.train.kit.builders import BetaPriorSnapshot, NewsEvent, TrainingSample, TrainingSampleBuilder
+from xrtm.train.simulation.artifacts import excluded_from_aggregates
 from xrtm.train.simulation.runner import BacktestDataset, BacktestInstance, BacktestRunner
 
 
@@ -102,17 +103,20 @@ def evaluate_forecast_records_with_backtest_runner(
             )
         )
 
+    # Unusable rows abstain (score 0.0) and must not enter the aggregate.
+    scored_results = [result for result in results if not excluded_from_aggregates(result)]
+    excluded = len(results) - len(scored_results)
     total = len(results)
-    mean_brier = sum(result.score for result in results) / total if total else 0.0
-    ece, bins = ExpectedCalibrationErrorEvaluator(num_bins=num_bins).compute_calibration_data(results)
+    mean_brier = sum(result.score for result in scored_results) / len(scored_results) if scored_results else 0.0
+    ece, bins = ExpectedCalibrationErrorEvaluator(num_bins=num_bins).compute_calibration_data(scored_results)
     return EvaluationReport(
         metric_name="Real Binary Forecast Brier Score",
         mean_score=mean_brier,
         total_evaluations=total,
         results=results,
         reliability_bins=bins,
-        summary_statistics={"brier_score": mean_brier, "ece": ece},
-        slices=SliceAnalytics.compute_slices(results),
+        summary_statistics={"brier_score": mean_brier, "ece": ece, "excluded": excluded},
+        slices=SliceAnalytics.compute_slices(scored_results),
     )
 
 

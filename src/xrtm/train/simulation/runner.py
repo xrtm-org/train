@@ -42,6 +42,7 @@ from xrtm.forecast.core.orchestrator import Orchestrator
 from xrtm.forecast.core.schemas.graph import BaseGraphState, TemporalContext
 
 from xrtm.train.simulation.artifacts import (
+    excluded_from_aggregates,
     normalize_binary_outcome,
     prediction_value_and_payload,
     resolution_payload,
@@ -186,13 +187,13 @@ class BacktestRunner:
             await asyncio.gather(*workers)
             results = [result for result in ordered_results if result is not None]
 
-        # Failures carry a placeholder score and must not pollute aggregates.
-        scored_results = [
-            result for result in results if not (getattr(result, "metadata", None) or {}).get("error")
-        ]
+        # Failures and abstentions carry placeholder scores and must not
+        # pollute aggregates; count both separately.
+        scored_results = [result for result in results if not excluded_from_aggregates(result)]
         total_score = sum(r.score for r in scored_results)
         count = len(scored_results)
-        error_count = len(results) - len(scored_results)
+        error_count = sum(1 for result in results if (getattr(result, "metadata", None) or {}).get("error"))
+        abstained_count = len(results) - count - error_count
         mean_score = total_score / count if count > 0 else 0.0
         ece_evaluator = ExpectedCalibrationErrorEvaluator()
         ece_score, ece_bins = ece_evaluator.compute_calibration_data(scored_results)
@@ -203,7 +204,7 @@ class BacktestRunner:
             total_evaluations=len(results),
             results=results,
             reliability_bins=ece_bins,
-            summary_statistics={"ece": ece_score, "errors": error_count},
+            summary_statistics={"ece": ece_score, "errors": error_count, "abstained": abstained_count},
             slices=slices,
         )
 
