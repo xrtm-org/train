@@ -36,6 +36,7 @@ from xrtm.eval.core.schemas import ForecastResolution
 from xrtm.forecast.kit.agents.base import Agent
 
 from xrtm.train.simulation.artifacts import (
+    excluded_from_aggregates,
     normalize_binary_outcome,
     prediction_value_and_payload,
     resolution_payload,
@@ -131,10 +132,11 @@ class Backtester:
 
         results = [res for res in processed_results if res is not None]
 
-        # Failures carry a placeholder score (1.0) and must not pollute the
-        # aggregate; count them separately instead.
-        scored = [res for res in results if not (getattr(res, "metadata", None) or {}).get("error")]
-        error_count = len(results) - len(scored)
+        # Failures (score 1.0 placeholders) and abstentions (0.0 for unusable
+        # rows) must not pollute the aggregate; count both separately.
+        scored = [res for res in results if not excluded_from_aggregates(res)]
+        error_count = sum(1 for res in results if (getattr(res, "metadata", None) or {}).get("error"))
+        abstained_count = len(results) - len(scored) - error_count
         count = len(scored)
         total_score = sum(res.score for res in scored)
         mean_score = total_score / count if count > 0 else 0.0
@@ -144,7 +146,7 @@ class Backtester:
             mean_score=mean_score,
             total_evaluations=len(results),
             results=results,
-            summary_statistics={"errors": error_count},
+            summary_statistics={"errors": error_count, "abstained": abstained_count},
         )
 
 

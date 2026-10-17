@@ -51,11 +51,16 @@ class TraceReplayer:
         try:
             json_str = state.model_dump_json(indent=2)
             target = Path(path)
-            tmp = target.with_suffix(target.suffix + ".tmp")
-            tmp.write_text(json_str, encoding="utf-8")
-            # Atomic swap: a killed process must not leave a torn trace that
-            # load_execution_trace then rejects.
-            os.replace(tmp, target)
+            # Unique temp name: concurrent saves must not interleave on a
+            # shared path. Atomic swap keeps a killed process from leaving a
+            # torn trace that load_execution_trace then rejects.
+            tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+            try:
+                tmp.write_text(json_str, encoding="utf-8")
+                os.replace(tmp, target)
+            except BaseException:
+                tmp.unlink(missing_ok=True)
+                raise
             logger.info("Execution trace saved to %s", path)
         except Exception as e:
             logger.error("Failed to save execution trace to %s: %s", path, e)

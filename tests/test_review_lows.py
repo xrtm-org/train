@@ -64,3 +64,68 @@ def test_build_sequence_length_mismatch_raises_even_for_tiny_inputs():
             prior_snapshots=[object()],
             deadline=datetime(2026, 1, 1, tzinfo=timezone.utc),
         )
+
+
+def test_excluded_from_aggregates_covers_failures_and_abstentions():
+    from types import SimpleNamespace
+
+    from xrtm.train.simulation.artifacts import excluded_from_aggregates
+
+    assert excluded_from_aggregates(SimpleNamespace(metadata={"abstained": True})) is True
+    assert excluded_from_aggregates(SimpleNamespace(metadata={"error": "boom"})) is True
+    assert excluded_from_aggregates(SimpleNamespace(metadata={})) is False
+    assert excluded_from_aggregates(SimpleNamespace(metadata=None)) is False
+
+
+@pytest.mark.asyncio
+async def test_backtester_excludes_abstained_rows_from_mean_score():
+    from unittest.mock import AsyncMock, MagicMock
+
+    from xrtm.data import ForecastOutput, ForecastQuestion
+    from xrtm.eval import EvaluationResult
+    from xrtm.eval.core.schemas import ForecastResolution
+
+    from xrtm.train import Backtester
+
+    agent = AsyncMock()
+    evaluator = MagicMock()
+    question_a = ForecastQuestion(id="qa", title="A")
+    question_b = ForecastQuestion(id="qb", title="B")
+    resolution_a = ForecastResolution(question_id="qa", outcome="yes")
+    resolution_b = ForecastResolution(question_id="qb", outcome="no")
+    agent.run.return_value = ForecastOutput.model_validate(
+        {
+            "forecast_request_id": "qa",
+            "probability": 0.8,
+            "reasoning_trace": {"narrative": "r"},
+            "metadata": {"source_version": "test"},
+        }
+    )
+
+    def evaluate(prediction, ground_truth, subject_id):
+        if subject_id == "qb":
+            # A row the evaluator could not use: 0.0 must not flatter the mean.
+            return EvaluationResult(
+                subject_id="qb",
+                score=0.0,
+                ground_truth=None,
+                prediction=None,
+                metadata={"metric": "Brier Score", "abstained": True, "reason": "unusable"},
+            )
+        return EvaluationResult(
+            subject_id="qa",
+            score=0.04,
+            ground_truth=1.0,
+            prediction=0.8,
+            metadata={"metric": "Brier Score"},
+        )
+
+    evaluator.evaluate.side_effect = evaluate
+
+    report = await Backtester(agent=agent, evaluator=evaluator).run(
+        [(question_a, resolution_a), (question_b, resolution_b)]
+    )
+
+    assert report.mean_score == pytest.approx(0.04)
+    assert report.summary_statistics["abstained"] == 1
+    assert report.summary_statistics["errors"] == 0
